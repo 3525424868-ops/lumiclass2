@@ -828,6 +828,18 @@
     return Math.min(Math.max(1, week), settings().totalWeeks);
   }
 
+  function readTabParam() {
+    // 主屏幕快捷方式用：?tab=assign|album|settings
+    var match = /[?&]tab=(assign|album|settings)/.exec(location.search || '');
+    return match ? match[1] : null;
+  }
+
+  function openTab(tab) {
+    if (tab === 'assign' && window.LumiReminders) window.LumiReminders.open();
+    else if (tab === 'album' && window.LumiAlbum) window.LumiAlbum.open();
+    else if (tab === 'settings') openSettings(false);
+  }
+
   function start() {
     load();
     bind();
@@ -859,6 +871,11 @@
     // ?preview=1 时不弹首次设置，方便截屏/演示；不会改动任何数据
     var preview = /[?&]preview=1/.test(location.search || '');
     if (!settings().hasCompletedSetup && !preview) openSettings(true);
+
+    var deepLinkTab = readTabParam();
+    if (deepLinkTab && settings().hasCompletedSetup) {
+      setTimeout(function () { openTab(deepLinkTab); }, 350);
+    }
 
     setInterval(tick, 60 * 1000);
     setInterval(function () {
