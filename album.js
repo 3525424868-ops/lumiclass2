@@ -42,6 +42,7 @@
       photos = items;
       renderGrid();
       applyBackground();
+      if (hooks && hooks.onPhotosChanged) hooks.onPhotosChanged(items);
       return items.length;
     });
   }
@@ -268,14 +269,23 @@
     }, { passive: true });
   }
 
+  function list() { return photos.slice(); }
+
+  function thumbUrl(photo) { return urlFor(photo, 'thumb'); }
+
   global.LumiAlbum = {
     init: function (options) {
       hooks = options;
       bind();
-      refresh().catch(function () { /* 首次打开可能还没有照片 */ });
+      refresh().then(function (items) {
+        if (hooks.onPhotosChanged) hooks.onPhotosChanged(items);
+      }).catch(function () { /* 首次打开可能还没有照片 */ });
     },
     open: open,
+    openAt: function (index) { openViewer(index); },
     refresh: refresh,
+    list: list,
+    thumbUrl: thumbUrl,
     applyBackground: applyBackground,
     addFiles: addFiles,
     importBuiltin: importBuiltin

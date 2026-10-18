@@ -247,6 +247,56 @@
     return card;
   }
 
+  /* ---------- 首页照片轮播 ---------- */
+
+  var carouselTimer = null;
+
+  function renderCarousel() {
+    var wrap = qs('photoCarousel');
+    var track = qs('carouselTrack');
+    if (!wrap || !track) return;
+
+    var show = settings().showCarousel !== false;
+    var album = window.LumiAlbum;
+    var photos = album && album.list ? album.list() : [];
+    if (!show || !photos.length) {
+      wrap.hidden = true;
+      track.textContent = '';
+      return;
+    }
+
+    track.textContent = '';
+    photos.forEach(function (photo, index) {
+      var card = el('button', 'carousel-card');
+      card.type = 'button';
+      card.dataset.index = String(index);
+      var img = el('img');
+      img.src = album.thumbUrl(photo);
+      img.alt = photo.name || '照片';
+      img.loading = 'lazy';
+      card.appendChild(img);
+      if (index === 0) card.appendChild(el('span', 'cap', photos.length + ' 个回忆 · 点我看大图'));
+      track.appendChild(card);
+    });
+    wrap.hidden = false;
+    startCarouselAuto(track);
+  }
+
+  function startCarouselAuto(track) {
+    if (carouselTimer) { clearInterval(carouselTimer); carouselTimer = null; }
+    var reduceMotion = window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+    if (reduceMotion) return;
+    carouselTimer = setInterval(function () {
+      if (document.hidden || document.querySelector('.sheet:not([hidden])')) return;
+      var cards = track.children;
+      if (!cards.length) return;
+      var step = cards[0].getBoundingClientRect().width + 8;
+      var next = Math.round(track.scrollLeft / step) + 1;
+      if (next >= cards.length) next = 0;
+      track.scrollTo({ left: next * step, behavior: 'smooth' });
+    }, 4000);
+  }
+
   function render() {
     renderTop();
     renderGrid();
@@ -549,6 +599,7 @@
     var reminder = s.classReminder || { enabled: false, minutesBefore: 15 };
     qs('sClassRemind').checked = !!reminder.enabled;
     qs('sClassMinutes').value = String(reminder.minutesBefore || 15);
+    qs('sCarousel').checked = s.showCarousel !== false;
     qs('startError').hidden = true;
     qs('settingsError').hidden = true;
     renderBackgroundControls();
@@ -606,8 +657,7 @@
       return;
     }
 
-    var reminderOn = qs('sClassRemind').checked;
-    if (reminderOn && !times.length) {
+    var reminderOn = qs('sClassRemind').checked;    if (reminderOn && !times.length) {
       errorBox.textContent = '要开启上课提醒，需要先在上面「节次时间」里填至少一节的作息（比如第 1 节 08:00–08:45）。';
       errorBox.hidden = false;
       var detailsOpen = qs('periodDetails');
@@ -621,6 +671,7 @@
     s.automaticMode = qs('sAuto').checked;
     s.selectedWeek = Math.min(Math.max(1, s.selectedWeek), weeks);
     s.periodTimes = times;
+    s.showCarousel = qs('sCarousel').checked;
     s.classReminder = {
       enabled: qs('sClassRemind').checked,
       minutesBefore: Number(qs('sClassMinutes').value) || 15
@@ -758,7 +809,8 @@
 
     qs('timetable').addEventListener('click', function (event) {
       var card = event.target.closest('.course-card');
-      if (card) showDetail(card.dataset.courseId);
+      // 直接进编辑：点课程框就改，不用先过一层详情
+      if (card) openEditor(card.dataset.courseId);
     });
 
     qs('courseList').addEventListener('click', function (event) {
@@ -782,6 +834,12 @@
 
     qs('btnExport').addEventListener('click', exportBackup);
     bindBackgroundControls();
+
+    qs('carouselTrack').addEventListener('click', function (event) {
+      var card = event.target.closest('.carousel-card');
+      if (!card || !window.LumiAlbum) return;
+      window.LumiAlbum.openAt(Number(card.dataset.index));
+    });
     qs('importFile').addEventListener('change', function (event) {
       var file = event.target.files && event.target.files[0];
       if (file) importBackup(file);
@@ -864,9 +922,11 @@
         save: save,
         toast: toast,
         openSheet: openSheet,
-        closeSheet: closeSheet
+        closeSheet: closeSheet,
+        onPhotosChanged: function () { renderCarousel(); }
       });
     }
+    renderCarousel();
 
     // ?preview=1 时不弹首次设置，方便截屏/演示；不会改动任何数据
     var preview = /[?&]preview=1/.test(location.search || '');

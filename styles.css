@@ -97,6 +97,54 @@ body.has-photo-bg .bg-decor { display: none; }
 }
 .fab:active { transform: scale(0.94); }
 
+/* 首页照片轮播 */
+.carousel {
+  margin: 0 2px 8px;
+  overflow: hidden;
+}
+.carousel-track {
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scroll-snap-type: x mandatory;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+  padding: 2px 2px 4px;
+}
+.carousel-track::-webkit-scrollbar { display: none; }
+.carousel-card {
+  position: relative;
+  flex: none;
+  width: min(62vw, 260px);
+  aspect-ratio: 16 / 10;
+  padding: 0;
+  border: 0;
+  border-radius: 16px;
+  overflow: hidden;
+  scroll-snap-align: center;
+  background: rgba(206, 128, 162, 0.16);
+  box-shadow: 0 6px 18px rgba(120, 70, 95, 0.16);
+  cursor: pointer;
+}
+.carousel-card img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+.carousel-card .cap {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  padding: 16px 10px 8px;
+  font-size: 11px;
+  color: #fff;
+  background: linear-gradient(transparent, rgba(0, 0, 0, 0.45));
+  text-align: left;
+}
+.carousel-card:active { transform: scale(0.985); }
+
 /* 作业 */
 .assign-list { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
 .assign-item {

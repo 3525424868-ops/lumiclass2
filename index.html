@@ -52,6 +52,9 @@
 </header>
 
 <main class="timetable-wrap" id="timetableWrap">
+  <section class="carousel" id="photoCarousel" hidden aria-label="我们的照片">
+    <div class="carousel-track" id="carouselTrack"></div>
+  </section>
   <div class="timetable" id="timetable" role="grid" aria-label="课程表"></div>
   <p class="empty-hint" id="emptyHint" hidden>本周没有固定节次课程</p>
 </main>
@@ -173,8 +176,7 @@
       <fieldset class="bg-box">
         <legend>课表背景</legend>
         <p class="hint" id="bgStatus">当前：粉色渐变（还没选照片）</p>
-        <label class="range-row">虚化 <input id="bgBlur" type="range" min="0" max="30" step="1"><output id="bgBlurOut">8 px</output></label>
-        <label class="range-row">亮度 <input id="bgBrightness" type="range" min="40" max="120" step="5"><output id="bgBrightnessOut">90%</output></label>
+        <label class="range-row">虚化 <input id="bgBlur" type="range" min="0" max="30" step="1"><output id="bgBlurOut">8 px</output></label>        <label class="range-row">亮度 <input id="bgBrightness" type="range" min="40" max="120" step="5"><output id="bgBrightnessOut">90%</output></label>
         <label class="range-row">缩放 <input id="bgScale" type="range" min="100" max="200" step="5"><output id="bgScaleOut">105%</output></label>
         <label class="range-row">上下位置 <input id="bgPosition" type="range" min="0" max="100" step="5"><output id="bgPositionOut">50%</output></label>
         <label class="range-row">文字遮罩 <input id="bgOverlay" type="range" min="0" max="90" step="5"><output id="bgOverlayOut">55%</output></label>
@@ -182,6 +184,14 @@
           <button class="btn ghost" id="btnClearBg" type="button">恢复粉色背景</button>
         </div>
         <p class="hint">在「相册」里点开任意照片 →「设为课表背景」，然后回这里调虚实、大小和位置。</p>
+      </fieldset>
+
+      <fieldset class="reminder-box">
+        <legend>首页照片轮播</legend>
+        <label class="switch-label">在课表上方滚动显示照片
+          <label class="switch"><input id="sCarousel" type="checkbox"><span></span></label>
+        </label>
+        <p class="hint">照片来自「相册」；每 4 秒自动滑到下一张，点照片可看大图。减弱动态效果开启时不会自动滑动。</p>
       </fieldset>
 
       <details class="periods-accordion" id="periodDetails">
