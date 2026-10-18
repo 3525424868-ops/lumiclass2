@@ -977,7 +977,19 @@
     }, 1500);
 
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
-      navigator.serviceWorker.register('sw.js').catch(function () { /* 离线缓存失败不影响使用 */ });
+      var hadController = !!navigator.serviceWorker.controller;
+      navigator.serviceWorker.register('sw.js', { updateViaCache: 'none' }).then(function (registration) {
+        // 主动检查更新，别等浏览器按缓存周期自己发现
+        registration.update().catch(function () { /* 离线时忽略 */ });
+      }).catch(function () { /* 离线缓存失败不影响使用 */ });
+
+      // 新版 Service Worker 接管后自动刷新一次，用户不用手动刷两次
+      navigator.serviceWorker.addEventListener('controllerchange', function () {
+        if (!hadController) return;
+        if (sessionStorage.getItem('lumiclass.reloaded')) return;
+        sessionStorage.setItem('lumiclass.reloaded', '1');
+        location.reload();
+      });
     }
   }
 
