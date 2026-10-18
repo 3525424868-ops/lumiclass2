@@ -1,0 +1,218 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="theme-color" content="#f3d9e5">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="LumiClass">
+<meta name="description" content="LumiClass 课表：离线可用的七列课表，含学期设置、课程编辑与纪念日。">
+<title>LumiClass 课表</title>
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icons/icon-192.png" sizes="192x192">
+<link rel="apple-touch-icon" href="icons/icon-192.png">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+<div class="bg-decor" aria-hidden="true">
+  <span class="doodle d1">♥</span>
+  <span class="doodle d2">☁</span>
+  <span class="doodle d3">✧</span>
+  <span class="doodle d4">♥</span>
+  <span class="doodle d5">☁</span>
+  <span class="doodle d6">✧</span>
+</div>
+
+<header class="topbar">
+  <button class="love-banner" id="loveBanner" type="button">
+    <span class="love-icon" id="loveIcon">♥</span>
+    <span class="love-text">
+      <strong id="loveLabel">相恋第 1 天</strong>
+      <small id="loveSub">2026.11.08 · 把喜欢写进每一天</small>
+    </span>
+    <span class="love-spark">✧</span>
+  </button>
+
+  <div class="week-bar">
+    <button class="week-title" id="weekTitle" type="button" aria-label="选择教学周">
+      第 <span id="weekNumber">1</span> 周 <span class="caret">▾</span>
+    </button>
+    <div class="week-actions">
+      <button class="icon-btn" id="prevWeek" type="button" aria-label="上一周">‹</button>
+      <button class="icon-btn" id="nextWeek" type="button" aria-label="下一周">›</button>
+    </div>
+  </div>
+
+  <div class="status-row">
+    <span id="statusText">正在加载…</span>
+    <button class="text-btn" id="backToNow" type="button" hidden>回到当前周</button>
+  </div>
+</header>
+
+<main class="timetable-wrap" id="timetableWrap">
+  <div class="timetable" id="timetable" role="grid" aria-label="课程表"></div>
+  <p class="empty-hint" id="emptyHint" hidden>本周没有固定节次课程</p>
+</main>
+
+<nav class="tabbar">
+  <button class="tab" id="btnToday" type="button"><span>◎</span>回到今天</button>
+  <button class="tab" id="btnCourseList" type="button"><span>≡</span>全部课程</button>
+  <button class="tab" id="btnAdd" type="button"><span>＋</span>添加课程</button>
+  <button class="tab" id="btnSettings" type="button"><span>⚙</span>设置</button>
+</nav>
+
+<!-- 课程详情 -->
+<section class="sheet" id="detailSheet" hidden aria-modal="true" role="dialog">
+  <div class="sheet-backdrop" data-close="detail"></div>
+  <div class="sheet-panel">
+    <div class="detail-head">
+      <span class="color-chip" id="detailColor"></span>
+      <h2 id="detailTitle">课程</h2>
+      <button class="icon-btn close" data-close="detail" type="button" aria-label="关闭">✕</button>
+    </div>
+    <dl class="detail-grid" id="detailGrid"></dl>
+    <div class="sheet-actions">
+      <button class="btn primary" id="detailEdit" type="button">编辑课程</button>
+    </div>
+  </div>
+</section>
+
+<!-- 课程编辑 -->
+<section class="sheet" id="editorSheet" hidden aria-modal="true" role="dialog">
+  <div class="sheet-backdrop" data-close="editor"></div>
+  <div class="sheet-panel">
+    <div class="sheet-head">
+      <h2 id="editorTitle">添加课程</h2>
+      <button class="icon-btn close" data-close="editor" type="button" aria-label="关闭">✕</button>
+    </div>
+    <form id="courseForm" class="form" autocomplete="off">
+      <label>课程名称<input id="fName" type="text" required placeholder="例如：高等数学（I-1）"></label>
+      <label>教师<input id="fTeacher" type="text" placeholder="可留空"></label>
+      <label>学分<input id="fCredits" type="text" inputmode="decimal" placeholder="可留空"></label>
+
+      <div class="form-row">
+        <label>星期
+          <select id="fWeekday">
+            <option value="1">周一</option><option value="2">周二</option><option value="3">周三</option>
+            <option value="4">周四</option><option value="5">周五</option><option value="6">周六</option>
+            <option value="7">周日</option>
+          </select>
+        </label>
+        <label>开始节次<input id="fStart" type="number" min="1" max="14" step="1"></label>
+        <label>连续节数<input id="fCount" type="number" min="1" max="14" step="1"></label>
+      </div>
+
+      <div class="form-row">
+        <label>开始周<input id="fFrom" type="number" min="1" max="60" step="1"></label>
+        <label>结束周<input id="fTo" type="number" min="1" max="60" step="1"></label>
+        <label class="switch-label">启用<label class="switch"><input id="fEnabled" type="checkbox" checked><span></span></label></label>
+      </div>
+
+      <div class="form-row">
+        <label>校区<input id="fCampus" type="text" placeholder="如：南海"></label>
+        <label>教室<input id="fClassroom" type="text" placeholder="如：教B311"></label>
+      </div>
+
+      <label>备注<textarea id="fNote" rows="2" placeholder="可留空"></textarea></label>
+
+      <fieldset class="colors">
+        <legend>课程颜色</legend>
+        <div id="colorRow" class="color-row"></div>
+      </fieldset>
+
+      <p class="form-error" id="formError" hidden></p>
+
+      <div class="sheet-actions">
+        <button class="btn ghost danger" id="btnDelete" type="button" hidden>删除课程</button>
+        <button class="btn primary" type="submit">保存</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- 学期设置 -->
+<section class="sheet" id="settingsSheet" hidden aria-modal="true" role="dialog">
+  <div class="sheet-backdrop" data-close="settings"></div>
+  <div class="sheet-panel">
+    <div class="sheet-head">
+      <h2 id="settingsTitle">设置</h2>
+      <button class="icon-btn close" data-close="settings" type="button" aria-label="关闭">✕</button>
+    </div>
+    <form id="settingsForm" class="form">
+      <p class="hint" id="onboardingHint" hidden>欢迎使用 LumiClass。先选一个学期开始的周一，再点“保存并开始”。</p>
+      <label>第 1 周周一<input id="sStart" type="date" required></label>
+      <p class="form-error" id="startError" hidden>请选择周一，日期不会被你以外的任何操作改动。</p>
+      <label>学期总周数<input id="sWeeks" type="number" min="1" max="60" step="1"></label>
+      <label class="switch-label">打开时自动显示当前周
+        <label class="switch"><input id="sAuto" type="checkbox"><span></span></label>
+      </label>
+
+      <details class="periods-accordion">
+        <summary>节次时间（可选，留空则不显示）</summary>
+        <div id="periodRows" class="period-rows"></div>
+        <p class="hint">按学校正式作息填写 24 小时制，结束时间必须晚于开始时间。</p>
+      </details>
+
+      <p class="form-error" id="settingsError" hidden></p>
+
+      <div class="sheet-actions">
+        <button class="btn ghost" id="btnCloseSettings" type="button">取消</button>
+        <button class="btn primary" type="submit">保存</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- 全部课程 -->
+<section class="sheet" id="listSheet" hidden aria-modal="true" role="dialog">
+  <div class="sheet-backdrop" data-close="list"></div>
+  <div class="sheet-panel">
+    <div class="sheet-head">
+      <h2>全部课程</h2>
+      <button class="icon-btn close" data-close="list" type="button" aria-label="关闭">✕</button>
+    </div>
+    <p class="hint" id="creditSummary"></p>
+    <ul class="course-list" id="courseList"></ul>
+    <h3 class="sub-title">其他课程</h3>
+    <p class="hint">以下课程尚无已确认的固定节次，因此不出现在周课表中。</p>
+    <ul class="course-list muted" id="otherList"></ul>
+    <div class="sheet-actions">
+      <button class="btn ghost" id="btnExport" type="button">导出备份</button>
+      <label class="btn ghost file-btn">导入备份<input id="importFile" type="file" accept="application/json" hidden></label>
+    </div>
+  </div>
+</section>
+
+<!-- 周次选择 -->
+<section class="sheet" id="weekSheet" hidden aria-modal="true" role="dialog">
+  <div class="sheet-backdrop" data-close="week"></div>
+  <div class="sheet-panel compact">
+    <div class="sheet-head">
+      <h2>浏览教学周</h2>
+      <button class="icon-btn close" data-close="week" type="button" aria-label="关闭">✕</button>
+    </div>
+    <div class="week-grid" id="weekGrid"></div>
+  </div>
+</section>
+
+<!-- 纪念卡 -->
+<section class="sheet" id="loveSheet" hidden aria-modal="true" role="dialog">
+  <div class="sheet-backdrop" data-close="love"></div>
+  <div class="sheet-panel love-panel">
+    <div class="love-heart">♥</div>
+    <h2 id="loveCardTitle">喜欢你，是每天的小确幸</h2>
+    <p class="love-days" id="loveCardDays"></p>
+    <p class="hint" id="loveCardNote"></p>
+    <div class="sheet-actions">
+      <button class="btn primary" data-close="love" type="button">收好啦</button>
+    </div>
+  </div>
+</section>
+
+<div class="toast" id="toast" hidden></div>
+
+<script src="core.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

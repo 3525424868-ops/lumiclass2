@@ -1,0 +1,644 @@
+/* LumiClass Web —— 柔粉主题 + 七列课表 */
+:root {
+  --pink-strong: #b9537f;
+  --pink: #ce80a2;
+  --pink-soft: #f7dfe9;
+  --ink: #3a2b33;
+  --ink-soft: #7c6673;
+  --line: rgba(58, 43, 51, 0.08);
+  --panel: rgba(255, 255, 255, 0.82);
+  --panel-solid: #fffafc;
+  --row-h: 78px;
+  --period-col: 34px;
+  --radius: 16px;
+  --shadow: 0 10px 30px rgba(120, 70, 95, 0.12);
+  --safe-bottom: env(safe-area-inset-bottom, 0px);
+  color-scheme: light;
+}
+
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+
+html, body {
+  margin: 0;
+  padding: 0;
+  min-height: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+body {
+  font-family: -apple-system, BlinkMacSystemFont, "PingFang SC", "Hiragino Sans GB",
+    "Microsoft YaHei", "Segoe UI", Roboto, sans-serif;
+  color: var(--ink);
+  background: linear-gradient(160deg, #fff0f5 0%, #f8dce8 45%, #f3e5f5 100%);
+  background-attachment: fixed;
+  padding-bottom: calc(64px + var(--safe-bottom));
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 背景装饰 */
+.bg-decor {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  overflow: hidden;
+}
+.doodle {
+  position: absolute;
+  color: var(--pink);
+  opacity: 0.18;
+  font-weight: 300;
+  user-select: none;
+}
+.d1 { font-size: 64px; left: 82%; top: 8%; transform: rotate(14deg); }
+.d2 { font-size: 104px; left: 4%; top: 24%; opacity: 0.13; }
+.d3 { font-size: 40px; left: 74%; top: 42%; }
+.d4 { font-size: 88px; left: 8%; top: 64%; transform: rotate(-16deg); }
+.d5 { font-size: 112px; left: 80%; top: 78%; opacity: 0.12; }
+.d6 { font-size: 34px; left: 28%; top: 90%; }
+
+/* 顶部 */
+.topbar {
+  position: relative;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  padding: 14px 12px 8px;
+  max-width: 720px;
+  margin: 0 auto;
+}
+
+.love-banner {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  padding: 10px 14px;
+  border: 1px solid rgba(185, 83, 127, 0.18);
+  border-radius: 18px;
+  background: var(--panel);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 6px 18px rgba(150, 90, 115, 0.1);
+  color: inherit;
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  transition: transform 0.16s ease, box-shadow 0.16s ease;
+}
+.love-banner:active { transform: scale(0.985); }
+.love-icon {
+  display: grid;
+  place-items: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f3a7c4, #d0678e);
+  color: #fff;
+  font-size: 17px;
+  flex: none;
+}
+.love-text { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.love-text strong { font-size: 14px; font-weight: 600; }
+.love-text small { font-size: 11px; color: var(--ink-soft); }
+.love-spark { margin-left: auto; color: var(--pink); font-size: 14px; }
+
+.week-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+.week-title {
+  border: 0;
+  background: transparent;
+  font: inherit;
+  font-size: 22px;
+  font-weight: 700;
+  color: var(--ink);
+  padding: 2px 4px;
+  cursor: pointer;
+}
+.week-title .caret { font-size: 13px; color: var(--ink-soft); }
+.week-actions { display: flex; gap: 6px; }
+
+.icon-btn {
+  min-width: 38px;
+  height: 38px;
+  padding: 0 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: var(--panel);
+  color: var(--ink);
+  font-size: 18px;
+  line-height: 1;
+  cursor: pointer;
+  transition: transform 0.14s ease, background 0.14s ease;
+}
+.icon-btn:active { transform: scale(0.94); }
+.icon-btn[disabled] { opacity: 0.35; cursor: default; }
+.icon-btn.close { font-size: 15px; border: 0; background: transparent; }
+
+.status-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 4px;
+  font-size: 12px;
+  color: var(--ink-soft);
+  min-height: 18px;
+}
+.text-btn {
+  border: 0;
+  background: transparent;
+  color: var(--pink-strong);
+  font: inherit;
+  font-size: 12px;
+  cursor: pointer;
+  padding: 2px 4px;
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* 课表 */
+.timetable-wrap {
+  position: relative;
+  z-index: 1;
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 0 8px 16px;
+  overflow-x: auto;
+}
+.timetable {
+  display: flex;
+  gap: 2px;
+  min-width: 0;
+  border-radius: 18px;
+  padding: 5px;
+  background: rgba(255, 255, 255, 0.5);
+  border: 1px solid var(--line);
+  box-shadow: var(--shadow);
+  backdrop-filter: blur(8px);
+}
+
+.period-col {
+  display: flex;
+  flex-direction: column;
+  width: var(--period-col);
+  flex: none;
+  padding-top: 30px;
+}
+.period-cell {
+  height: var(--row-h);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding-top: 6px;
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--ink-soft);
+}
+.period-cell small { font-size: 8px; font-weight: 400; line-height: 1.15; text-align: center; }
+
+.days {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 2px;
+  flex: 1;
+  min-width: 0;
+}
+.day-col {
+  position: relative;
+  min-width: 0;
+  border-radius: 10px;
+}
+.day-head {
+  height: 30px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 1px;
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--ink-soft);
+  border-radius: 8px;
+}
+.day-head small { font-size: 9px; font-weight: 400; }
+.day-col.today .day-head {
+  background: rgba(185, 83, 127, 0.14);
+  color: var(--pink-strong);
+}
+.day-col.today .day-head small { color: var(--pink-strong); }
+.day-body {
+  position: relative;
+  background: rgba(58, 43, 51, 0.03);
+  border-radius: 10px;
+  overflow: hidden;
+}
+.day-body .slot-line {
+  position: absolute;
+  left: 0;
+  right: 0;
+  height: 1px;
+  background: var(--line);
+}
+
+.course-card {
+  position: absolute;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 5px 4px;
+  border-radius: 10px;
+  border: 1px solid transparent;
+  background: var(--panel-solid);
+  color: var(--ink);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+  overflow: hidden;
+  transition: transform 0.14s ease, box-shadow 0.14s ease;
+}
+.course-card:active { transform: scale(0.97); }
+.course-card .bar {
+  width: 16px;
+  height: 3px;
+  border-radius: 2px;
+  flex: none;
+}
+.course-card .name {
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.2;
+  word-break: break-all;
+}
+.course-card .room {
+  margin-top: auto;
+  font-size: 9px;
+  color: var(--ink-soft);
+  line-height: 1.15;
+  word-break: break-all;
+}
+.course-card.disabled { opacity: 0.5; }
+
+.empty-hint {
+  text-align: center;
+  font-size: 13px;
+  color: var(--ink-soft);
+  padding: 14px;
+}
+
+/* 底部标签栏 */
+.tabbar {
+  position: fixed;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  z-index: 5;
+  display: flex;
+  justify-content: space-around;
+  gap: 2px;
+  padding: 8px 6px calc(8px + var(--safe-bottom));
+  background: rgba(255, 250, 252, 0.92);
+  border-top: 1px solid var(--line);
+  backdrop-filter: blur(16px);
+}
+.tab {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 2px;
+  border: 0;
+  background: transparent;
+  color: var(--ink-soft);
+  font: inherit;
+  font-size: 10px;
+  cursor: pointer;
+  border-radius: 12px;
+}
+.tab span { font-size: 17px; line-height: 1; }
+.tab:active { background: rgba(185, 83, 127, 0.08); }
+
+/* 弹层 */
+.sheet {
+  position: fixed;
+  inset: 0;
+  z-index: 20;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+}
+.sheet[hidden] { display: none; }
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(48, 30, 40, 0.38);
+  backdrop-filter: blur(2px);
+  animation: fadeIn 0.18s ease;
+}
+.sheet-panel {
+  position: relative;
+  width: min(520px, 100%);
+  max-height: 88vh;
+  overflow-y: auto;
+  overflow-x: hidden;
+  padding: 18px 18px calc(18px + var(--safe-bottom));
+  border-radius: 22px 22px 0 0;
+  background: var(--panel-solid);
+  box-shadow: 0 -12px 40px rgba(80, 40, 60, 0.22);
+  animation: slideUp 0.24s cubic-bezier(0.2, 0.9, 0.25, 1);
+}
+.sheet-panel.compact { padding-bottom: 22px; }
+.sheet-head, .detail-head {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 14px;
+}
+.sheet-head h2, .detail-head h2 {
+  margin: 0;
+  font-size: 17px;
+  font-weight: 700;
+  flex: 1;
+}
+.color-chip { width: 5px; height: 26px; border-radius: 3px; background: var(--pink); flex: none; }
+
+@keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+@keyframes slideUp { from { transform: translateY(18px); opacity: 0.6; } to { transform: translateY(0); opacity: 1; } }
+
+/* 详情 */
+.detail-grid {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  gap: 10px 16px;
+  margin: 0 0 16px;
+  font-size: 14px;
+}
+.detail-grid dt { color: var(--ink-soft); }
+.detail-grid dd { margin: 0; word-break: break-word; }
+
+/* 表单 */
+.form { display: flex; flex-direction: column; gap: 12px; }
+.form label { display: flex; flex-direction: column; gap: 5px; font-size: 12px; color: var(--ink-soft); }
+.form label.switch-label {
+  flex-direction: row;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 4px 0;
+}
+.form input, .form select, .form textarea {
+  font: inherit;
+  font-size: 15px;
+  color: var(--ink);
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  width: 100%;
+  max-width: 100%;
+  min-width: 0;
+}
+.form input:focus, .form select:focus, .form textarea:focus {
+  outline: 2px solid rgba(185, 83, 127, 0.35);
+  outline-offset: 1px;
+}
+.form-row { display: flex; gap: 10px; }
+.form-row > label { flex: 1; }
+.switch-label { flex-direction: row; align-items: center; justify-content: space-between; }
+.switch { position: relative; display: inline-block; width: 46px; height: 26px; flex: none; }
+.switch input { position: absolute; opacity: 0; width: 100%; height: 100%; margin: 0; }
+.switch span {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  background: rgba(58, 43, 51, 0.16);
+  transition: background 0.18s ease;
+}
+.switch span::after {
+  content: "";
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.2);
+  transition: transform 0.18s ease;
+}
+.switch input:checked + span { background: var(--pink-strong); }
+.switch input:checked + span::after { transform: translateX(20px); }
+
+.colors, .periods { border: 0; padding: 0; margin: 0; }
+.colors legend, .periods legend { font-size: 12px; color: var(--ink-soft); margin-bottom: 8px; }
+.color-row { display: flex; gap: 10px; }
+.color-dot {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  cursor: pointer;
+  padding: 0;
+  position: relative;
+}
+.color-dot[aria-pressed="true"] { border-color: rgba(58, 43, 51, 0.35); }
+.color-dot[aria-pressed="true"]::after {
+  content: "✓";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #fff;
+  font-size: 14px;
+}
+
+.period-rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
+.period-row {
+  display: flex;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 6px;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
+.period-row strong { width: 18px; text-align: right; flex: none; font-weight: 600; }
+.period-row span { flex: none; }
+.period-row input {
+  flex: 1 1 0;
+  min-width: 0;
+  width: auto;
+  padding: 7px 8px;
+  font-size: 13px;
+}
+
+/* 节次时间折叠区 */
+.periods-accordion {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.6);
+}
+.periods-accordion > summary {
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--ink);
+  list-style: none;
+}
+.periods-accordion > summary::-webkit-details-marker { display: none; }
+.periods-accordion > summary::before { content: "＋ "; color: var(--pink-strong); }
+.periods-accordion[open] > summary::before { content: "－ "; }
+.periods-accordion > * + * { margin-top: 10px; }
+
+.form-error {
+  margin: 0;
+  padding: 9px 12px;
+  border-radius: 10px;
+  background: rgba(214, 90, 90, 0.1);
+  color: #b03a3a;
+  font-size: 12px;
+}
+.hint { font-size: 12px; color: var(--ink-soft); margin: 0; line-height: 1.5; }
+
+.sheet-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+  margin-top: 16px;
+}
+.btn {
+  font: inherit;
+  font-size: 14px;
+  font-weight: 600;
+  padding: 11px 18px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink);
+  cursor: pointer;
+}
+.btn.primary {
+  background: linear-gradient(135deg, #c96b93, var(--pink-strong));
+  border-color: transparent;
+  color: #fff;
+}
+.btn.ghost { background: transparent; }
+.btn.danger { color: #c0392b; border-color: rgba(192, 57, 43, 0.3); margin-right: auto; }
+.btn:active { transform: scale(0.97); }
+.file-btn { display: inline-flex; align-items: center; }
+
+/* 全部课程 */
+.course-list { list-style: none; margin: 0 0 8px; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.course-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: #fff;
+  cursor: pointer;
+}
+.course-list li .dot { width: 8px; height: 8px; border-radius: 50%; flex: none; }
+.course-list li .info { min-width: 0; }
+.course-list li strong { display: block; font-size: 14px; font-weight: 600; }
+.course-list li small { font-size: 11px; color: var(--ink-soft); }
+.course-list.muted li { cursor: default; background: rgba(255, 255, 255, 0.6); }
+.sub-title { font-size: 14px; margin: 14px 0 6px; }
+
+/* 周次选择 */
+.week-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(58px, 1fr));
+  gap: 10px;
+}
+.week-cell {
+  padding: 12px 0;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font: inherit;
+  font-weight: 600;
+  cursor: pointer;
+}
+.week-cell[aria-current="true"] {
+  background: rgba(185, 83, 127, 0.14);
+  border-color: rgba(185, 83, 127, 0.35);
+  color: var(--pink-strong);
+}
+
+/* 纪念卡 */
+.love-panel { text-align: center; padding-top: 26px; }
+.love-heart {
+  width: 92px;
+  height: 92px;
+  margin: 0 auto 12px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(206, 128, 162, 0.12);
+  color: var(--pink-strong);
+  font-size: 40px;
+}
+.love-panel h2 { font-size: 18px; margin: 0 0 8px; }
+.love-days { font-size: 15px; color: var(--ink-soft); margin: 0 0 10px; }
+
+/* 提示 */
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: calc(84px + var(--safe-bottom));
+  transform: translateX(-50%);
+  z-index: 30;
+  max-width: 86vw;
+  padding: 10px 16px;
+  border-radius: 999px;
+  background: rgba(58, 43, 51, 0.9);
+  color: #fff;
+  font-size: 13px;
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.18);
+  animation: fadeIn 0.16s ease;
+}
+
+/* 窄屏 */
+@media (max-width: 560px) {
+  :root { --row-h: 70px; --period-col: 30px; }
+  .week-title { font-size: 19px; }
+  .sheet-panel { border-radius: 18px 18px 0 0; }
+  .period-rows { grid-template-columns: 1fr; }
+}
+@media (max-width: 400px) {
+  :root { --row-h: 64px; --period-col: 28px; }
+  .course-card .name { font-size: 10px; }
+  .course-card .room { font-size: 8px; }
+  .day-head { font-size: 10px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --ink: #f4e7ee;
+    --ink-soft: #c2a9b6;
+    --line: rgba(255, 255, 255, 0.12);
+    --panel: rgba(48, 32, 44, 0.78);
+    --panel-solid: #2b1f29;
+    --shadow: 0 10px 30px rgba(0, 0, 0, 0.35);
+    color-scheme: dark;
+  }
+  body { background: linear-gradient(160deg, #30202c 0%, #251d30 55%, #382532 100%); }
+  .form input, .form select, .form textarea, .course-list li, .week-cell, .btn { background: #3a2a35; color: var(--ink); }
+  .tabbar { background: rgba(43, 31, 41, 0.94); }
+  .course-card { background: #3a2a35; }
+  .day-body { background: rgba(255, 255, 255, 0.04); }
+  .timetable { background: rgba(43, 31, 41, 0.55); }
+  .color-dot[aria-pressed="true"] { border-color: rgba(255, 255, 255, 0.6); }
+}

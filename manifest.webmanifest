@@ -1,0 +1,17 @@
+{
+  "name": "LumiClass 课表",
+  "short_name": "LumiClass",
+  "description": "离线可用的七列课表：切周、编辑课程、学期设置与纪念日。",
+  "lang": "zh-CN",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "portrait",
+  "background_color": "#fff0f5",
+  "theme_color": "#b9537f",
+  "icons": [
+    { "src": "icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}
