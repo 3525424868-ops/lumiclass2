@@ -1,5 +1,5 @@
 /* LumiClass Web —— 离线缓存（改版本号即可让所有客户端更新） */
-var CACHE = 'lumiclass-web-v5';
+var CACHE = 'lumiclass-web-v6';
 var ASSETS = [
   './',
   './index.html',

@@ -145,8 +145,15 @@
     hooks.setBackgroundId(isBackground ? null : photo.id);
     hooks.save();
     await applyBackground();
-    renderViewer();
-    hooks.toast(isBackground ? '已恢复粉色背景' : '已设为课表背景');
+    if (!isBackground) {
+      // 设好背景后直接回到课表，让用户马上看到效果
+      hooks.closeSheet('photo');
+      hooks.closeSheet('album');
+      hooks.toast('已设为课表背景，去「设置 → 课表背景」调虚实大小');
+    } else {
+      renderViewer();
+      hooks.toast('已恢复粉色背景');
+    }
   }
 
   async function removeCurrent() {
