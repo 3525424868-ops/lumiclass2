@@ -16,6 +16,10 @@ LumiClass 的网页版课表：纯静态、离线可用、数据只存在浏览�
 - 增 / 删 / 改课程：颜色、启用开关、周次范围、冲突检测（会阻止保存并指出冲突课程）
 - 学期设置：第 1 周周一（必须是周一）、总周数、节次作息时间（HH:mm 校验）
 - 全部课程列表 + 固定课程学分统计（同名课程只计一次，取最大值 = 22.5）
+- **作业提醒**：记录作业所属课程、内容、截止时间、提前多久提醒；列表按截止时间排序，标出「还早 / 该做了 / 已过期 / 已完成」，可勾选完成、删除
+- **上课提醒**：设置里开启并选提前几分钟；App 打开时到点提示（iPhone 网页不允许后台定时通知）
+- **导出系统日历（.ics）**：作业提醒与上课提醒都可导出，用手机打开导入系统日历，由 iOS/Android 准点弹通知 —— 这是最可靠的提醒方式
+- **相册**：从手机相册选图（可多选），自动压缩存进 IndexedDB；网格浏览、看大图、左右滑动翻页、设为课表背景、删除
 - 相恋天数与纪念日彩蛋：2026-11-08 为第 1 天，第 100 天（2027-02-15）与每个周年可点开
 - 深色模式跟随系统；支持减弱动态效果
 - PWA：可加到主屏幕、离线打开（Service Worker 缓存）
@@ -23,11 +27,24 @@ LumiClass 的网页版课表：纯静态、离线可用、数据只存在浏览�
 
 ## 数据存在哪
 
-全部在浏览器的 `localStorage`，键名 `lumiclass.web.v1`，**不联网、没有账号、没有服务器**。
+- 课表、作业、设置：浏览器 `localStorage`，键名 `lumiclass.web.v1`
+- 相册照片：浏览器 **IndexedDB**（库名 `lumiclass-web`，表 `photos`）；原图最长边 1600、缩略图 400，都是压缩后的 JPEG
 
-- 换浏览器或换设备不会自动同步（可以用“导出备份 → 导入备份”迁移）
+**不联网、没有账号、没有服务器**，全部只在这台设备里。
+
+- 换浏览器或换设备不会自动同步（用“导出备份 → 导入备份”迁移课表与作业；照片不会进入 JSON 备份，需要在手机相册里另存）
 - 清理浏览器数据 / 卸载 PWA 会丢数据，重要的话先导出
 - 坏数据不会被覆盖：读取失败时会把原始内容另存到 `lumiclass.web.backup` 并提示
+
+## 提醒为什么这样设计
+
+iPhone 上的网页（即使是添加到主屏幕的 PWA）**不能像原生 App 那样在后台定时弹通知**，所以提醒分三层：
+
+1. **App 内**：打开就检查，待办角标显示在「作业」标签上，到点弹提示；
+2. **导出 .ics**（推荐）：导入系统日历后由系统准点提醒，不需要 App 开着；
+3. **网页通知**：授权后，App 开着时会推送。
+
+网页通知需要 iOS 16.4+ 且已添加到主屏幕；Android 上支持更好。
 
 ## 有用的网址参数
 
@@ -39,16 +56,31 @@ LumiClass 的网页版课表：纯静态、离线可用、数据只存在浏览�
 ## 部署到 GitHub Pages（手机用）
 
 1. GitHub 新建仓库，例如 `lumiclass`，选 **Public**（Pages 对私有仓库需要付费套餐）。
-2. 仓库首页 → **Add file → Upload files**，把本文件夹里的 `index.html`、`styles.css`、`core.js`、`app.js`、`sw.js`、`manifest.webmanifest` 和 `icons/` 整个拖进去 → **Commit changes**。
+2. 仓库首页 → **Add file → Upload files**，把本文件夹里的 `index.html`、`styles.css`、`core.js`、`store.js`、`album.js`、`reminders.js`、`app.js`、`sw.js`、`manifest.webmanifest` 和 `icons/` 整个拖进去 → **Commit changes**。
 3. **Settings → Pages** → Source 选 **Deploy from a branch** → Branch 选 `main` + `/ (root)` → **Save**。
 4. 等 1 分钟，访问 `https://<你的用户名>.github.io/lumiclass/`，手机浏览器打开 → 分享 → **添加到主屏幕**。
 
 如果不想让课表内容变成公开网页，可以用 `https://app.netlify.com/drop`：把这个文件夹拖进去，立刻得到一个网址，不需要 GitHub。
 
+## 文件说明
+
+| 文件 | 作用 |
+|---|---|
+| `index.html` | 页面结构（课表、详情、编辑、设置、作业、相册、周次、纪念卡） |
+| `styles.css` | 柔粉主题、七列网格、作业/相册样式、深色模式 |
+| `core.js` | 纯逻辑：周次、冲突、分栏、学分、作业状态、下次上课时间、.ics 生成（可在 node 里跑） |
+| `store.js` | IndexedDB 照片存取 + canvas 压缩 |
+| `album.js` | 相册界面：网格、大图翻页、设为背景、删除 |
+| `reminders.js` | 作业增删改、提醒检查、导出日历 |
+| `app.js` | 渲染与交互、localStorage、设置、备份导入导出 |
+| `sw.js` | Service Worker：离线缓存（改 `CACHE` 版本号触发热更新） |
+| `tests/core.test.js` | 36 项逻辑断言 |
+
+
 ## 以后改了代码怎么更新
 
 - 普通改动：重新上传同名文件，Pages 会自动重新发布；
-- 但如果浏览器装过 PWA，Service Worker 会缓存旧文件。改完请把 `sw.js` 里的 `var CACHE = 'lumiclass-web-v1'` 改成 `v2`、`v3`……，或者在手机上清一次该站点数据。
+- 但如果浏览器装过 PWA，Service Worker 会缓存旧文件。改完请把 `sw.js` 里的 `var CACHE = 'lumiclass-web-v2'` 改成 `v3`、`v4`……，或者在手机上清一次该站点数据。
 
 ## 开发与自测
 

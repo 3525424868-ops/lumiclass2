@@ -7,7 +7,7 @@
 <meta name="apple-mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
 <meta name="apple-mobile-web-app-title" content="LumiClass">
-<meta name="description" content="LumiClass 课表：离线可用的七列课表，含学期设置、课程编辑与纪念日。">
+<meta name="description" content="LumiClass 课表：离线可用的七列课表，支持作业提醒、上课提醒、相册与纪念日。">
 <title>LumiClass 课表</title>
 <link rel="manifest" href="manifest.webmanifest">
 <link rel="icon" href="icons/icon-192.png" sizes="192x192">
@@ -15,6 +15,7 @@
 <link rel="stylesheet" href="styles.css">
 </head>
 <body>
+<div id="photoBg" class="photo-bg" aria-hidden="true"></div>
 <div class="bg-decor" aria-hidden="true">
   <span class="doodle d1">♥</span>
   <span class="doodle d2">☁</span>
@@ -55,10 +56,13 @@
   <p class="empty-hint" id="emptyHint" hidden>本周没有固定节次课程</p>
 </main>
 
+<button class="fab" id="btnAdd" type="button" aria-label="添加课程">＋</button>
+
 <nav class="tabbar">
-  <button class="tab" id="btnToday" type="button"><span>◎</span>回到今天</button>
-  <button class="tab" id="btnCourseList" type="button"><span>≡</span>全部课程</button>
-  <button class="tab" id="btnAdd" type="button"><span>＋</span>添加课程</button>
+  <button class="tab" id="btnToday" type="button"><span>◎</span>今天</button>
+  <button class="tab" id="btnCourseList" type="button"><span>≡</span>课程</button>
+  <button class="tab" id="btnAssignments" type="button"><span>✎</span>作业</button>
+  <button class="tab" id="btnAlbum" type="button"><span>▤</span>相册</button>
   <button class="tab" id="btnSettings" type="button"><span>⚙</span>设置</button>
 </nav>
 
@@ -148,8 +152,25 @@
         <label class="switch"><input id="sAuto" type="checkbox"><span></span></label>
       </label>
 
+      <fieldset class="reminder-box">
+        <legend>上课提醒</legend>
+        <label class="switch-label">上课前提醒我
+          <label class="switch"><input id="sClassRemind" type="checkbox"><span></span></label>
+        </label>
+        <label>提前多久
+          <select id="sClassMinutes">
+            <option value="5">5 分钟</option>
+            <option value="10">10 分钟</option>
+            <option value="15">15 分钟</option>
+            <option value="30">30 分钟</option>
+            <option value="60">1 小时</option>
+          </select>
+        </label>
+        <p class="hint">iPhone 上的网页不能后台定时通知，所以除了 App 内提示，建议在「作业」页导出一次日历，由系统日历准点提醒。</p>
+      </fieldset>
+
       <details class="periods-accordion">
-        <summary>节次时间（可选，留空则不显示）</summary>
+        <summary>节次时间（上课提醒需要它）</summary>
         <div id="periodRows" class="period-rows"></div>
         <p class="hint">按学校正式作息填写 24 小时制，结束时间必须晚于开始时间。</p>
       </details>
@@ -184,6 +205,100 @@
   </div>
 </section>
 
+<!-- 作业 -->
+<section class="sheet" id="assignSheet" hidden aria-modal="true" role="dialog">
+  <div class="sheet-backdrop" data-close="assign"></div>
+  <div class="sheet-panel">
+    <div class="sheet-head">
+      <h2>作业提醒</h2>
+      <button class="icon-btn close" data-close="assign" type="button" aria-label="关闭">✕</button>
+    </div>
+    <p class="hint" id="assignSummary"></p>
+    <ul class="assign-list" id="assignList"></ul>
+    <div class="sheet-actions wrap">
+      <button class="btn ghost" id="btnExportICS" type="button">导出作业日历</button>
+      <button class="btn ghost" id="btnExportClassICS" type="button">导出上课日历</button>
+      <button class="btn primary" id="btnNewAssign" type="button">新增作业</button>
+    </div>
+  </div>
+</section>
+
+<!-- 作业编辑 -->
+<section class="sheet" id="assignEditSheet" hidden aria-modal="true" role="dialog">
+  <div class="sheet-backdrop" data-close="assignEdit"></div>
+  <div class="sheet-panel">
+    <div class="sheet-head">
+      <h2 id="assignEditTitle">新增作业</h2>
+      <button class="icon-btn close" data-close="assignEdit" type="button" aria-label="关闭">✕</button>
+    </div>
+    <form id="assignForm" class="form">
+      <label>哪门课的作业
+        <select id="aCourse"></select>
+      </label>
+      <label>作业内容<input id="aTitle" type="text" required placeholder="例如：第 3 章习题 1–10"></label>
+      <label>截止时间<input id="aDue" type="datetime-local" required></label>
+      <label>什么时候提醒我
+        <select id="aRemind">
+          <option value="0">不提醒</option>
+          <option value="15">提前 15 分钟</option>
+          <option value="60">提前 1 小时</option>
+          <option value="180">提前 3 小时</option>
+          <option value="1440">提前 1 天</option>
+          <option value="2880">提前 2 天</option>
+        </select>
+      </label>
+      <label>备注<textarea id="aNote" rows="2" placeholder="可留空"></textarea></label>
+      <label class="switch-label">已完成
+        <label class="switch"><input id="aDone" type="checkbox"><span></span></label>
+      </label>
+      <p class="form-error" id="assignError" hidden></p>
+      <div class="sheet-actions">
+        <button class="btn ghost danger" id="aDelete" type="button" hidden>删除</button>
+        <button class="btn ghost" id="cDoneToggle" type="button">切换完成状态</button>
+        <button class="btn primary" type="submit">保存</button>
+      </div>
+    </form>
+  </div>
+</section>
+
+<!-- 相册 -->
+<section class="sheet" id="albumSheet" hidden aria-modal="true" role="dialog">
+  <div class="sheet-backdrop" data-close="album"></div>
+  <div class="sheet-panel">
+    <div class="sheet-head">
+      <h2>我们的相册</h2>
+      <button class="icon-btn close" data-close="album" type="button" aria-label="关闭">✕</button>
+    </div>
+    <p class="hint" id="albumCount">还没有照片</p>
+    <p class="hint" id="albumEmpty">点「添加照片」从手机相册选图。照片只存在这台设备的浏览器里，不会上传到任何服务器。</p>
+    <div class="album-grid" id="albumGrid"></div>
+    <input id="albumInput" type="file" accept="image/*" multiple hidden>
+    <div class="sheet-actions wrap">
+      <button class="btn primary" id="btnPickPhotos" type="button">添加照片</button>
+    </div>
+  </div>
+</section>
+
+<!-- 看大图 -->
+<section class="sheet" id="photoSheet" hidden aria-modal="true" role="dialog">
+  <div class="sheet-backdrop" data-close="photo"></div>
+  <div class="sheet-panel photo-panel">
+    <div class="sheet-head">
+      <h2 id="photoCounter">1 / 1</h2>
+      <button class="icon-btn close" data-close="photo" type="button" aria-label="关闭">✕</button>
+    </div>
+    <div class="photo-stage">
+      <button class="photo-nav" id="photoPrev" type="button" aria-label="上一张">‹</button>
+      <img id="photoImage" alt="照片">
+      <button class="photo-nav" id="photoNext" type="button" aria-label="下一张">›</button>
+    </div>
+    <div class="sheet-actions wrap">
+      <button class="btn ghost" id="btnPhotoDelete" type="button">删除</button>
+      <button class="btn primary" id="btnPhotoBackground" type="button">设为课表背景</button>
+    </div>
+  </div>
+</section>
+
 <!-- 周次选择 -->
 <section class="sheet" id="weekSheet" hidden aria-modal="true" role="dialog">
   <div class="sheet-backdrop" data-close="week"></div>
@@ -213,6 +328,9 @@
 <div class="toast" id="toast" hidden></div>
 
 <script src="core.js"></script>
+<script src="store.js"></script>
+<script src="album.js"></script>
+<script src="reminders.js"></script>
 <script src="app.js"></script>
 </body>
 </html>

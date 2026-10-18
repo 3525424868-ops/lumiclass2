@@ -486,6 +486,9 @@
     qs('sStart').value = s.semesterStartDate;
     qs('sWeeks').value = String(s.totalWeeks);
     qs('sAuto').checked = !!s.automaticMode;
+    var reminder = s.classReminder || { enabled: false, minutesBefore: 15 };
+    qs('sClassRemind').checked = !!reminder.enabled;
+    qs('sClassMinutes').value = String(reminder.minutesBefore || 15);
     qs('startError').hidden = true;
     qs('settingsError').hidden = true;
     buildPeriodRows();
@@ -543,6 +546,10 @@
     s.automaticMode = qs('sAuto').checked;
     s.selectedWeek = Math.min(Math.max(1, s.selectedWeek), weeks);
     s.periodTimes = times;
+    s.classReminder = {
+      enabled: qs('sClassRemind').checked,
+      minutesBefore: Number(qs('sClassMinutes').value) || 15
+    };
     s.hasCompletedSetup = true;
     state.viewWeek = null;
     save();
@@ -666,6 +673,12 @@
     qs('btnAdd').addEventListener('click', function () { openEditor(null); });
     qs('btnCourseList').addEventListener('click', openCourseList);
     qs('btnSettings').addEventListener('click', function () { openSettings(false); });
+    qs('btnAssignments').addEventListener('click', function () {
+      if (window.LumiReminders) window.LumiReminders.open();
+    });
+    qs('btnAlbum').addEventListener('click', function () {
+      if (window.LumiAlbum) window.LumiAlbum.open();
+    });
     qs('loveBanner').addEventListener('click', openLoveCard);
 
     qs('timetable').addEventListener('click', function (event) {
@@ -744,10 +757,39 @@
     bind();
     state.viewWeek = readWeekParam();
     render();
+
+    // 作业 / 上课提醒 与 相册（IndexedDB）
+    if (window.LumiReminders) {
+      window.LumiReminders.init({
+        getData: function () { return state.data; },
+        save: save,
+        toast: toast,
+        openSheet: openSheet,
+        closeSheet: closeSheet
+      });
+    }
+    if (window.LumiAlbum) {
+      window.LumiAlbum.init({
+        getBackgroundId: function () { return settings().backgroundPhotoId; },
+        setBackgroundId: function (id) { settings().backgroundPhotoId = id; },
+        save: save,
+        toast: toast,
+        openSheet: openSheet,
+        closeSheet: closeSheet
+      });
+    }
+
     // ?preview=1 时不弹首次设置，方便截屏/演示；不会改动任何数据
     var preview = /[?&]preview=1/.test(location.search || '');
     if (!settings().hasCompletedSetup && !preview) openSettings(true);
+
     setInterval(tick, 60 * 1000);
+    setInterval(function () {
+      if (window.LumiReminders) window.LumiReminders.check(new Date());
+    }, 30 * 1000);
+    setTimeout(function () {
+      if (window.LumiReminders) window.LumiReminders.check(new Date());
+    }, 1500);
 
     if ('serviceWorker' in navigator && location.protocol !== 'file:') {
       navigator.serviceWorker.register('sw.js').catch(function () { /* 离线缓存失败不影响使用 */ });

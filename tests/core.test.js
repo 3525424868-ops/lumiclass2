@@ -229,6 +229,132 @@ test('其它课程按名称去重', () => {
   assert.strictEqual(seeded.otherCourses.length, 3);
 });
 
+/* ---------- 作业提醒 ---------- */
+
+function assignment(overrides) {
+  return Object.assign({
+    id: 'a1',
+    courseName: '高等数学（I-1）',
+    title: '第 3 章习题',
+    dueAt: '2026-10-20T22:00',
+    remindBeforeMinutes: 1440,
+    note: '',
+    done: false
+  }, overrides);
+}
+
+test('作业状态：还早 / 该做了 / 已过期 / 已完成', () => {
+  const a = assignment();
+  assert.strictEqual(core.assignmentState(a, new Date(2026, 9, 18, 10, 0)), 'upcoming');
+  // 提前一天提醒 → 10-19 22:00 开始进入 due
+  assert.strictEqual(core.assignmentState(a, new Date(2026, 9, 19, 22, 0)), 'due');
+  assert.strictEqual(core.assignmentState(a, new Date(2026, 9, 20, 22, 1)), 'overdue');
+  assert.strictEqual(core.assignmentState(assignment({ done: true }), new Date(2026, 9, 21, 0, 0)), 'done');
+});
+
+test('提醒时间为截止时间减去提前量', () => {
+  const a = assignment({ remindBeforeMinutes: 60 });
+  assert.strictEqual(core.toLocalDateTimeInput(core.assignmentRemindAt(a)), '2026-10-20T21:00');
+});
+
+test('remindLabel 文案', () => {
+  assert.strictEqual(core.remindLabel(0), '不提醒');
+  assert.strictEqual(core.remindLabel(30), '提前 30 分钟');
+  assert.strictEqual(core.remindLabel(180), '提前 3 小时');
+  assert.strictEqual(core.remindLabel(1440), '提前 1 天');
+});
+
+test('排序：未完成按截止时间升序，已完成排后面', () => {
+  const list = [
+    assignment({ id: 'b', dueAt: '2026-10-25T22:00' }),
+    assignment({ id: 'c', dueAt: '2026-10-19T22:00', done: true }),
+    assignment({ id: 'a', dueAt: '2026-10-21T22:00' })
+  ];
+  assert.deepStrictEqual(core.sortAssignments(list).map((x) => x.id), ['a', 'b', 'c']);
+});
+
+test('只把该提醒 / 已过期且未完成的作业挑出来', () => {
+  const list = [
+    assignment({ id: 'early', dueAt: '2026-11-30T22:00', remindBeforeMinutes: 60 }),
+    assignment({ id: 'due', dueAt: '2026-10-20T22:00', remindBeforeMinutes: 1440 }),
+    assignment({ id: 'done', dueAt: '2026-10-20T22:00', done: true })
+  ];
+  const picked = core.assignmentsToNotify(list, new Date(2026, 9, 20, 12, 0)).map((x) => x.id);
+  assert.deepStrictEqual(picked, ['due']);
+});
+
+/* ---------- 上课提醒 ---------- */
+
+test('nextClassOccurrence 找到下一节课并算出提醒时间', () => {
+  const settings = core.defaultSettings();
+  settings.semesterStartDate = '2026-09-07';
+  settings.totalWeeks = 20;
+  settings.periodTimes = [
+    { id: 1, start: '08:00', end: '08:45' },
+    { id: 2, start: '08:55', end: '09:40' }
+  ];
+  // 2026-10-19 是周一，第 7 周，周一第 1-2 节有大学体育
+  const next = core.nextClassOccurrence(core.seedCourses(), settings, new Date(2026, 9, 19, 7, 0));
+  assert.ok(next, '应该找到下一节课');
+  assert.strictEqual(next.course.name, '大学体育（1）');
+  assert.strictEqual(core.toLocalDateTimeInput(next.start), '2026-10-19T08:00');
+});
+
+test('没有作息时间时不产生上课提醒', () => {
+  const settings = core.defaultSettings();
+  settings.periodTimes = [];
+  assert.strictEqual(core.nextClassOccurrence(core.seedCourses(), settings, new Date(2026, 9, 19, 7, 0)), null);
+});
+
+/* ---------- 日历导出 ---------- */
+
+test('导出的 ics 结构正确并带提醒', () => {
+  const ics = core.buildICS({
+    assignments: [assignment()],
+    courses: [],
+    settings: core.defaultSettings(),
+    includeClasses: false
+  });
+  assert.ok(ics.startsWith('BEGIN:VCALENDAR'));
+  assert.ok(ics.trimEnd().endsWith('END:VCALENDAR'));
+  assert.ok(ics.includes('BEGIN:VEVENT'));
+  assert.ok(ics.includes('TRIGGER:-PT1440M'));
+  assert.ok(ics.includes('SUMMARY:作业截止'));
+  assert.strictEqual((ics.match(/BEGIN:VEVENT/g) || []).length, 1);
+});
+
+test('导出的上课日历按周重复，数量等于周数', () => {
+  const settings = core.defaultSettings();
+  settings.semesterStartDate = '2026-09-07';
+  // 覆盖所有被课程用到的节次：1、3、5、7、9（+结束节次）
+  const blank = (id, start, end) => ({ id, start, end });
+  settings.periodTimes = [
+    blank(1, '08:00', '08:45'), blank(2, '08:55', '09:40'),
+    blank(3, '10:00', '10:45'), blank(4, '10:55', '11:40'),
+    blank(5, '14:00', '14:45'), blank(6, '14:55', '15:40'),
+    blank(7, '16:00', '16:45'), blank(8, '16:55', '17:40'),
+    blank(9, '18:00', '18:45'), blank(10, '18:55', '19:40')
+  ];
+  const ics = core.buildICS({ assignments: [], courses: core.seedCourses(), settings, includeClasses: true });
+  assert.strictEqual((ics.match(/BEGIN:VEVENT/g) || []).length, 11);
+  assert.ok(ics.includes('RRULE:FREQ=WEEKLY;INTERVAL=1;COUNT=14'));
+  assert.ok(ics.includes('BEGIN:VALARM'));
+});
+
+test('缺少节次作息时，该课程不会生成日历事件', () => {
+  const settings = core.defaultSettings();
+  settings.semesterStartDate = '2026-09-07';
+  settings.periodTimes = [{ id: 1, start: '08:00', end: '08:45' }];
+  const ics = core.buildICS({ assignments: [], courses: core.seedCourses(), settings, includeClasses: true });
+  // 只有第 1 节开始的 3 门课能生成
+  assert.strictEqual((ics.match(/BEGIN:VEVENT/g) || []).length, 3);
+});
+
+test('ics 转义与折行', () => {
+  assert.strictEqual(core.icsEscape('a,b;c'), 'a\\,b\\;c');
+  assert.strictEqual(core.icsEscape('第一行\n第二行'), '第一行\\n第二行');
+});
+
 /* ---------- 汇总 ---------- */
 
 if (failures.length) {

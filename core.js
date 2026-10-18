@@ -261,7 +261,9 @@
       automaticMode: true,
       hasCompletedSetup: false,
       seedVersion: 0,
-      periodTimes: [] // [{ id: 1, start: '08:00', end: '08:45' }]
+      periodTimes: [], // [{ id: 1, start: '08:00', end: '08:45' }]
+      classReminder: { enabled: false, minutesBefore: 15 },
+      backgroundPhotoId: null
     };
   }
 
@@ -271,6 +273,15 @@
     if (!data.settings) { data.settings = defaultSettings(); changed = true; }
     if (!Array.isArray(data.courses)) { data.courses = []; changed = true; }
     if (!Array.isArray(data.otherCourses)) { data.otherCourses = []; changed = true; }
+    if (!Array.isArray(data.assignments)) { data.assignments = []; changed = true; }
+    if (!data.settings.classReminder) {
+      data.settings.classReminder = { enabled: false, minutesBefore: 15 };
+      changed = true;
+    }
+    if (data.settings.backgroundPhotoId === undefined) {
+      data.settings.backgroundPhotoId = null;
+      changed = true;
+    }
 
     if (!data.settings.seedVersion) {
       if (data.courses.length === 0) { data.courses = seedCourses(); changed = true; }
@@ -279,6 +290,196 @@
       changed = true;
     }
     return { data: data, changed: changed };
+  }
+
+  /* ============================================================
+   * 作业提醒 / 上课提醒 / 日历导出
+   * ============================================================ */
+
+  var REMIND_CHOICES = [0, 15, 60, 180, 1440, 2880]; // 分钟
+
+  function remindLabel(minutes) {
+    if (!minutes) return '不提醒';
+    if (minutes < 60) return '提前 ' + minutes + ' 分钟';
+    if (minutes < 1440) return '提前 ' + (minutes / 60) + ' 小时';
+    return '提前 ' + (minutes / 1440) + ' 天';
+  }
+
+  function parseLocalDateTime(text) {
+    // 'YYYY-MM-DDTHH:mm' -> 本地 Date
+    var m = /^(\d{4})-(\d{2})-(\d{2})[T ](\d{2}):(\d{2})/.exec(String(text || ''));
+    if (!m) return null;
+    return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]), Number(m[4]), Number(m[5]));
+  }
+
+  function toLocalDateTimeInput(date) {
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    return date.getFullYear() + '-' + pad(date.getMonth() + 1) + '-' + pad(date.getDate()) +
+      'T' + pad(date.getHours()) + ':' + pad(date.getMinutes());
+  }
+
+  /** 作业状态：done 已完成 / overdue 已过期 / due 该提醒了 / upcoming 还早 */
+  function assignmentState(assignment, now) {
+    if (assignment.done) return 'done';
+    var due = parseLocalDateTime(assignment.dueAt);
+    if (!due) return 'upcoming';
+    if (now >= due) return 'overdue';
+    var remindAt = new Date(due.getTime() - (Number(assignment.remindBeforeMinutes) || 0) * 60000);
+    if (now >= remindAt) return 'due';
+    return 'upcoming';
+  }
+
+  function assignmentRemindAt(assignment) {
+    var due = parseLocalDateTime(assignment.dueAt);
+    if (!due) return null;
+    return new Date(due.getTime() - (Number(assignment.remindBeforeMinutes) || 0) * 60000);
+  }
+
+  function sortAssignments(assignments) {
+    return assignments.slice().sort(function (a, b) {
+      if (!!a.done !== !!b.done) return a.done ? 1 : -1;
+      var da = parseLocalDateTime(a.dueAt);
+      var db = parseLocalDateTime(b.dueAt);
+      return (da ? da.getTime() : Infinity) - (db ? db.getTime() : Infinity);
+    });
+  }
+
+  /** 需要弹提醒的作业（同一作业同一状态只提醒一次，由调用方记录 key） */
+  function assignmentsToNotify(assignments, now) {
+    return assignments.filter(function (a) {
+      var state = assignmentState(a, now);
+      return state === 'due' || state === 'overdue';
+    });
+  }
+
+  /** 某节课下一次上课的开始时间（按本地时间与设置里的节次作息） */
+  function nextClassOccurrence(courses, settings, now) {
+    if (!settings.periodTimes || !settings.periodTimes.length) return null;
+    var currentWeek = weekNumber(now, settings.semesterStartDate);
+    var best = null;
+    for (var w = Math.max(1, currentWeek); w <= Math.min(settings.totalWeeks, Math.max(1, currentWeek) + 2); w++) {
+      var monday = weekDates(settings.semesterStartDate, w)[0];
+      courses.forEach(function (course) {
+        if (!isVisible(course, w)) return;
+        var time = settings.periodTimes.filter(function (t) { return t.id === course.startPeriod; })[0];
+        if (!time || !time.start) return;
+        var start = combineDateTime(addDays(monday, course.weekday - 1), time.start);
+        if (!start || start <= now) return;
+        if (!best || start < best.start) best = { course: course, start: start, week: w };
+      });
+    }
+    return best;
+  }
+
+  function combineDateTime(dateObj, hhmm) {
+    var minutes = minutesOf(hhmm);
+    if (minutes === null) return null;
+    return new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(),
+      Math.floor(minutes / 60), minutes % 60, 0, 0);
+  }
+
+  /* ---------- .ics 日历导出（系统日历负责准点提醒） ---------- */
+
+  function icsDateTime(date) {
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    return date.getUTCFullYear() + pad(date.getUTCMonth() + 1) + pad(date.getUTCDate()) + 'T' +
+      pad(date.getUTCHours()) + pad(date.getUTCMinutes()) + pad(date.getUTCSeconds()) + 'Z';
+  }
+
+  function icsEscape(text) {
+    return String(text || '')
+      .replace(/\\/g, '\\\\')
+      .replace(/;/g, '\\;')
+      .replace(/,/g, '\\,')
+      .replace(/\r?\n/g, '\\n');
+  }
+
+  function icsFold(line) {
+    // RFC 5545：超过 75 字节要折行
+    var out = [];
+    var bytes = 0;
+    var chunk = '';
+    for (var i = 0; i < line.length; i++) {
+      var ch = line[i];
+      var size = encodeURIComponent(ch).replace(/%[0-9A-F]{2}/g, 'x').length;
+      if (bytes + size > 73) {
+        out.push(chunk);
+        chunk = ' ' + ch;
+        bytes = 1 + size;
+      } else {
+        chunk += ch;
+        bytes += size;
+      }
+    }
+    out.push(chunk);
+    return out.join('\r\n');
+  }
+
+  function buildICS(options) {
+    var assignments = options.assignments || [];
+    var courses = options.courses || [];
+    var settings = options.settings || defaultSettings();
+    var includeClasses = options.includeClasses !== false;
+    var lines = [
+      'BEGIN:VCALENDAR',
+      'VERSION:2.0',
+      'PRODID:-//LumiClass//Timetable//CN',
+      'CALSCALE:GREGORIAN',
+      'METHOD:PUBLISH',
+      'X-WR-CALNAME:LumiClass 课表与作业'
+    ];
+
+    assignments.forEach(function (a) {
+      var due = parseLocalDateTime(a.dueAt);
+      if (!due) return;
+      var trigger = Number(a.remindBeforeMinutes) || 0;
+      var courseName = a.courseName || '作业';
+      lines.push('BEGIN:VEVENT');
+      lines.push('UID:' + (a.id || uid()) + '@lumiclass');
+      lines.push('DTSTAMP:' + icsDateTime(new Date()));
+      lines.push('DTSTART:' + icsDateTime(due));
+      lines.push('DTEND:' + icsDateTime(new Date(due.getTime() + 30 * 60000)));
+      lines.push(icsFold('SUMMARY:' + icsEscape('作业截止：' + courseName + ' · ' + a.title)));
+      if (a.note) lines.push(icsFold('DESCRIPTION:' + icsEscape(a.note)));
+      lines.push('BEGIN:VALARM');
+      lines.push('ACTION:DISPLAY');
+      lines.push('TRIGGER:-PT' + Math.max(1, trigger) + 'M');
+      lines.push(icsFold('DESCRIPTION:' + icsEscape('作业即将截止：' + a.title)));
+      lines.push('END:VALARM');
+      lines.push('END:VEVENT');
+    });
+
+    if (includeClasses && settings.periodTimes && settings.periodTimes.length) {
+      courses.forEach(function (course) {
+        if (!course.isEnabled) return;
+        var startTime = settings.periodTimes.filter(function (t) { return t.id === course.startPeriod; })[0];
+        var endTime = settings.periodTimes.filter(function (t) { return t.id === endPeriod(course); })[0];
+        if (!startTime || !startTime.start) return;
+        var firstMonday = weekDates(settings.semesterStartDate, Math.max(1, course.startWeek))[0];
+        var firstDay = addDays(firstMonday, course.weekday - 1);
+        var start = combineDateTime(firstDay, startTime.start);
+        var end = endTime && endTime.end ? combineDateTime(firstDay, endTime.end) : new Date(start.getTime() + course.periodCount * 45 * 60000);
+        var count = Math.max(1, course.endWeek - Math.max(1, course.startWeek) + 1);
+        var minutes = Number(settings.classReminder && settings.classReminder.minutesBefore) || 15;
+        lines.push('BEGIN:VEVENT');
+        lines.push('UID:' + course.id + '-class@lumiclass');
+        lines.push('DTSTAMP:' + icsDateTime(new Date()));
+        lines.push('DTSTART:' + icsDateTime(start));
+        lines.push('DTEND:' + icsDateTime(end));
+        lines.push('RRULE:FREQ=WEEKLY;INTERVAL=1;COUNT=' + count);
+        lines.push(icsFold('SUMMARY:' + icsEscape(course.name + (course.classroom ? '（' + course.classroom + '）' : ''))));
+        lines.push(icsFold('LOCATION:' + icsEscape([course.campus, course.classroom].filter(Boolean).join(' · '))));
+        lines.push('BEGIN:VALARM');
+        lines.push('ACTION:DISPLAY');
+        lines.push('TRIGGER:-PT' + Math.max(1, minutes) + 'M');
+        lines.push(icsFold('DESCRIPTION:' + icsEscape('马上上课：' + course.name)));
+        lines.push('END:VALARM');
+        lines.push('END:VEVENT');
+      });
+    }
+
+    lines.push('END:VCALENDAR');
+    return lines.join('\r\n') + '\r\n';
   }
 
   var api = {
@@ -306,7 +507,21 @@
     defaultSettings: defaultSettings,
     bootstrap: bootstrap,
     uid: uid,
-    RELATIONSHIP_START: RELATIONSHIP_START
+    RELATIONSHIP_START: RELATIONSHIP_START,
+    // 作业与提醒
+    REMIND_CHOICES: REMIND_CHOICES,
+    remindLabel: remindLabel,
+    parseLocalDateTime: parseLocalDateTime,
+    toLocalDateTimeInput: toLocalDateTimeInput,
+    assignmentState: assignmentState,
+    assignmentRemindAt: assignmentRemindAt,
+    sortAssignments: sortAssignments,
+    assignmentsToNotify: assignmentsToNotify,
+    nextClassOccurrence: nextClassOccurrence,
+    combineDateTime: combineDateTime,
+    buildICS: buildICS,
+    icsDateTime: icsDateTime,
+    icsEscape: icsEscape
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;
