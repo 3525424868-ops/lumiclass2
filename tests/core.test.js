@@ -355,6 +355,63 @@ test('ics 转义与折行', () => {
   assert.strictEqual(core.icsEscape('第一行\n第二行'), '第一行\\n第二行');
 });
 
+/* ---------- 每门课的具体时间 ---------- */
+
+test('时间输入只输数字，冒号自动补', () => {
+  assert.strictEqual(core.formatTimeInput('1'), '1');
+  assert.strictEqual(core.formatTimeInput('12'), '12');
+  assert.strictEqual(core.formatTimeInput('123'), '12:3');
+  assert.strictEqual(core.formatTimeInput('1200'), '12:00');
+  assert.strictEqual(core.formatTimeInput('12:00'), '12:00');
+  assert.strictEqual(core.formatTimeInput('abc'), '');
+});
+
+test('失焦补全成 HH:mm', () => {
+  assert.strictEqual(core.normalizeTimeInput('9'), '09:00');
+  assert.strictEqual(core.normalizeTimeInput('930'), '09:30');
+  assert.strictEqual(core.normalizeTimeInput('12'), '12:00');
+  assert.strictEqual(core.normalizeTimeInput('1200'), '12:00');
+  assert.strictEqual(core.normalizeTimeInput('12:5'), '12:05');
+  assert.strictEqual(core.normalizeTimeInput(''), '');
+  assert.strictEqual(core.normalizeTimeInput('25:00'), '23:00');
+  assert.strictEqual(core.normalizeTimeInput('12:99'), '12:59');
+});
+
+test('课程自己的时间优先于节次作息', () => {
+  const settings = core.defaultSettings();
+  settings.periodTimes = [{ id: 5, start: '14:00', end: '14:45' }, { id: 6, start: '14:55', end: '15:40' }];
+  const withTime = course({ startPeriod: 5, periodCount: 2, startTime: '12:00', endTime: '14:00' });
+  const range = core.courseTimeRange(withTime, settings);
+  assert.strictEqual(range.start, '12:00');
+  assert.strictEqual(range.end, '14:00');
+  assert.strictEqual(range.source, 'course');
+
+  const without = course({ startPeriod: 5, periodCount: 2 });
+  const fallback = core.courseTimeRange(without, settings);
+  assert.strictEqual(fallback.start, '14:00');
+  assert.strictEqual(fallback.end, '15:40');
+  assert.strictEqual(fallback.source, 'period');
+
+  assert.strictEqual(core.courseTimeRange(course({ startPeriod: 9, periodCount: 1 }), settings), null);
+});
+
+test('非法时间被忽略，退回节次作息', () => {
+  const settings = core.defaultSettings();
+  settings.periodTimes = [{ id: 1, start: '08:00', end: '08:45' }];
+  const bad = course({ startPeriod: 1, periodCount: 1, startTime: '14:00', endTime: '12:00' });
+  assert.strictEqual(core.courseTimeRange(bad, settings).source, 'period');
+});
+
+test('没有作息时间时，课程自己的时间也能导出日历', () => {
+  const settings = core.defaultSettings();
+  settings.semesterStartDate = '2026-09-07';
+  settings.periodTimes = [];
+  const custom = course({ startPeriod: 1, periodCount: 1, startTime: '12:00', endTime: '14:00', startWeek: 4, endWeek: 4 });
+  const ics = core.buildICS({ assignments: [], courses: [custom], settings, includeClasses: true });
+  assert.strictEqual((ics.match(/BEGIN:VEVENT/g) || []).length, 1);
+  assert.ok(ics.includes('DTSTART:'), '应有 DTSTART');
+});
+
 /* ---------- 汇总 ---------- */
 
 if (failures.length) {

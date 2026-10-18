@@ -369,18 +369,17 @@
     });
   }
 
-  /** 某节课下一次上课的开始时间（按本地时间与设置里的节次作息） */
+  /** 某节课下一次上课的开始时间（优先课程自己的时间，其次节次作息） */
   function nextClassOccurrence(courses, settings, now) {
-    if (!settings.periodTimes || !settings.periodTimes.length) return null;
     var currentWeek = weekNumber(now, settings.semesterStartDate);
     var best = null;
     for (var w = Math.max(1, currentWeek); w <= Math.min(settings.totalWeeks, Math.max(1, currentWeek) + 2); w++) {
       var monday = weekDates(settings.semesterStartDate, w)[0];
       courses.forEach(function (course) {
         if (!isVisible(course, w)) return;
-        var time = settings.periodTimes.filter(function (t) { return t.id === course.startPeriod; })[0];
-        if (!time || !time.start) return;
-        var start = combineDateTime(addDays(monday, course.weekday - 1), time.start);
+        var range = courseTimeRange(course, settings);
+        if (!range) return;
+        var start = combineDateTime(addDays(monday, course.weekday - 1), range.start);
         if (!start || start <= now) return;
         if (!best || start < best.start) best = { course: course, start: start, week: w };
       });
@@ -393,6 +392,75 @@
     if (minutes === null) return null;
     return new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate(),
       Math.floor(minutes / 60), minutes % 60, 0, 0);
+  }
+
+  /* ---------- 每门课的具体时间 ---------- */
+
+  /**
+   * 优先用课程自己填的 startTime/endTime（12:00 / 14:00），
+   * 没填则退回“节次 + 设置里的作息时间”。
+   * 返回 { start, end, source: 'course' | 'period' } 或 null。
+   */
+  function courseTimeRange(course, settings) {
+    if (course && course.startTime && course.endTime && validTimeRange(course.startTime, course.endTime)) {
+      return { start: course.startTime, end: course.endTime, source: 'course' };
+    }
+    var times = (settings && settings.periodTimes) || [];
+    if (!course) return null;
+    var first = times.filter(function (t) { return t.id === course.startPeriod; })[0];
+    var last = times.filter(function (t) { return t.id === endPeriod(course); })[0];
+    if (!first || !first.start) return null;
+    if (last && last.end && validTimeRange(first.start, last.end)) {
+      return { start: first.start, end: last.end, source: 'period' };
+    }
+    // 只有开始时间时，按每节 45 分钟估算结束时间
+    var minutes = minutesOf(first.start);
+    if (minutes === null) return null;
+    var total = minutes + 45 * Math.max(1, course.periodCount);
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    return { start: first.start, end: pad(Math.floor(total / 60) % 24) + ':' + pad(total % 60), source: 'period' };
+  }
+
+  /**
+   * 把用户输入的数字补成 HH:mm：
+   *  1 → 1     12 → 12     123 → 12:3     1234 → 12:34
+   * 输入里已经带冒号也接受。
+   */
+  function formatTimeInput(raw) {
+    var text = String(raw || '').trim();
+    if (text.indexOf(':') >= 0) {
+      var parts = text.split(':');
+      var h = parts[0].replace(/\D/g, '').slice(0, 2);
+      var m = (parts[1] || '').replace(/\D/g, '').slice(0, 2);
+      return h + ':' + m;
+    }
+    var digits = text.replace(/\D/g, '').slice(0, 4);
+    if (digits.length <= 2) return digits;
+    if (digits.length === 3) return digits.slice(0, 2) + ':' + digits.slice(2);
+    return digits.slice(0, 2) + ':' + digits.slice(2, 4);
+  }
+
+  /** 失焦时补全成 HH:mm：9 → 09:00，930 → 09:30，1200 → 12:00，12:5 → 12:05 */
+  function normalizeTimeInput(raw) {
+    var text = String(raw || '').trim();
+    if (!text) return '';
+    var hourText;
+    var minuteText;
+    if (text.indexOf(':') >= 0) {
+      var parts = text.split(':');
+      hourText = (parts[0] || '').replace(/\D/g, '');
+      minuteText = (parts[1] || '').replace(/\D/g, '');
+    } else {
+      var digits = text.replace(/\D/g, '');
+      if (digits.length <= 2) { hourText = digits; minuteText = ''; }
+      else if (digits.length === 3) { hourText = digits.slice(0, 1); minuteText = digits.slice(1); }
+      else { hourText = digits.slice(0, 2); minuteText = digits.slice(2, 4); }
+    }
+    if (!hourText) return '';
+    var hour = Math.min(23, Number(hourText));
+    var minute = minuteText ? Math.min(59, Number(minuteText)) : 0;
+    var pad = function (n) { return String(n).padStart(2, '0'); };
+    return pad(hour) + ':' + pad(minute);
   }
 
   /* ---------- .ics 日历导出（系统日历负责准点提醒） ---------- */
@@ -466,16 +534,15 @@
       lines.push('END:VEVENT');
     });
 
-    if (includeClasses && settings.periodTimes && settings.periodTimes.length) {
+    if (includeClasses) {
       courses.forEach(function (course) {
         if (!course.isEnabled) return;
-        var startTime = settings.periodTimes.filter(function (t) { return t.id === course.startPeriod; })[0];
-        var endTime = settings.periodTimes.filter(function (t) { return t.id === endPeriod(course); })[0];
-        if (!startTime || !startTime.start) return;
+        var range = courseTimeRange(course, settings);
+        if (!range) return;
         var firstMonday = weekDates(settings.semesterStartDate, Math.max(1, course.startWeek))[0];
         var firstDay = addDays(firstMonday, course.weekday - 1);
-        var start = combineDateTime(firstDay, startTime.start);
-        var end = endTime && endTime.end ? combineDateTime(firstDay, endTime.end) : new Date(start.getTime() + course.periodCount * 45 * 60000);
+        var start = combineDateTime(firstDay, range.start);
+        var end = combineDateTime(firstDay, range.end) || new Date(start.getTime() + course.periodCount * 45 * 60000);
         var count = Math.max(1, course.endWeek - Math.max(1, course.startWeek) + 1);
         var minutes = Number(settings.classReminder && settings.classReminder.minutesBefore) || 15;
         lines.push('BEGIN:VEVENT');
@@ -540,7 +607,10 @@
     icsDateTime: icsDateTime,
     icsEscape: icsEscape,
     DEFAULT_BG_STYLE: DEFAULT_BG_STYLE,
-    normalizeBackgroundStyle: normalizeBackgroundStyle
+    normalizeBackgroundStyle: normalizeBackgroundStyle,
+    courseTimeRange: courseTimeRange,
+    formatTimeInput: formatTimeInput,
+    normalizeTimeInput: normalizeTimeInput
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

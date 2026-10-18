@@ -338,7 +338,11 @@
     grid.textContent = '';
     var rows = [
       ['上课', weekdayName(course.weekday) + ' · ' + course.startPeriod + '–' + core.endPeriod(course) + ' 节'],
-      ['时间', timeLabel(course.startPeriod, core.endPeriod(course)) || '未填写作息时间'],
+      ['时间', (function () {
+        var range = core.courseTimeRange(course, settings());
+        if (!range) return '未填写时间';
+        return range.start + '–' + range.end + (range.source === 'course' ? '' : '（按节次作息）');
+      })()],
       ['地点', [course.campus, course.classroom].filter(Boolean).join(' · ') || '未填写'],
       ['教师', course.teacher || '未填写'],
       ['学分', typeof course.credits === 'number' ? String(course.credits) : '未填写'],
@@ -395,6 +399,8 @@
     qs('fCampus').value = course ? course.campus : '';
     qs('fClassroom').value = course ? course.classroom : '';
     qs('fNote').value = course ? course.note : '';
+    qs('fStartTime').value = course && course.startTime ? course.startTime : '';
+    qs('fEndTime').value = course && course.endTime ? course.endTime : '';
     qs('fEnabled').checked = course ? course.isEnabled : true;
     state.selectedColor = course ? course.colorHex : COLOR_CHOICES[0];
     buildColorRow();
@@ -429,6 +435,16 @@
       credits = parsed;
     }
 
+    // 每门课自己的上下课时间（可选，两个都填才算）
+    var startTime = core.normalizeTimeInput(qs('fStartTime').value);
+    var endTime = core.normalizeTimeInput(qs('fEndTime').value);
+    if (startTime || endTime) {
+      if (!startTime || !endTime) return { error: '上课时间和下课时间要么都填，要么都留空。' };
+      if (!core.validTimeRange(startTime, endTime)) {
+        return { error: '时间不对：下课时间要晚于上课时间（例如 12:00 到 14:00）。' };
+      }
+    }
+
     return {
       course: {
         id: state.editingId || core.uid(),
@@ -438,6 +454,8 @@
         periodCount: count,
         startWeek: from,
         endWeek: to,
+        startTime: startTime || '',
+        endTime: endTime || '',
         classroom: qs('fClassroom').value.trim(),
         campus: qs('fCampus').value.trim(),
         teacher: qs('fTeacher').value.trim(),
@@ -825,6 +843,19 @@
     });
 
     qs('courseForm').addEventListener('submit', submitCourse);
+
+    // 上课/下课时间：只输数字，冒号自动补
+    [['fStartTime'], ['fEndTime']].forEach(function (pair) {
+      var input = qs(pair[0]);
+      if (!input) return;
+      input.addEventListener('input', function () {
+        var formatted = core.formatTimeInput(input.value);
+        if (formatted !== input.value) input.value = formatted;
+      });
+      input.addEventListener('blur', function () {
+        input.value = core.normalizeTimeInput(input.value);
+      });
+    });
     qs('btnDelete').addEventListener('click', deleteCourse);
     qs('settingsForm').addEventListener('submit', submitSettings);
     qs('btnCloseSettings').addEventListener('click', function () {

@@ -109,7 +109,12 @@
         <label>开始节次<input id="fStart" type="number" min="1" max="14" step="1"></label>
         <label>连续节数<input id="fCount" type="number" min="1" max="14" step="1"></label>
       </div>
-      <p class="hint">这里只选“第几节”。具体几点上课是全校统一的作息，在底部「设置 → 节次时间」里填一次，所有课程共用。</p>
+
+      <div class="form-row time-row">
+        <label>上课时间<input id="fStartTime" type="text" inputmode="numeric" maxlength="5" placeholder="12:00" autocomplete="off"></label>
+        <label>下课时间<input id="fEndTime" type="text" inputmode="numeric" maxlength="5" placeholder="14:00" autocomplete="off"></label>
+      </div>
+      <p class="hint">只输数字就行，冒号会自动补上：输 <b>12</b> 变 12:00，输 <b>1200</b> 也变 12:00，输 <b>930</b> 变 09:30。两个都留空就用「设置 → 节次时间」里的全校作息。</p>
 
       <div class="form-row">
         <label>开始周<input id="fFrom" type="number" min="1" max="60" step="1"></label>
