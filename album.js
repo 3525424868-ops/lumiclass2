@@ -165,10 +165,19 @@
     renderViewer();
   }
 
-  /** 把背景照片铺到页面底层；没有照片时恢复粉色渐变 */
+  /** 把背景照片铺到页面底层；虚化、亮度、缩放、位置、遮罩都来自设置 */
   async function applyBackground() {
     var layer = qs('photoBg');
     if (!layer) return;
+    var style = hooks.getBackgroundStyle ? hooks.getBackgroundStyle() : null;
+    if (style) {
+      layer.style.setProperty('--bg-blur', style.blur + 'px');
+      layer.style.setProperty('--bg-bright', String(style.brightness / 100));
+      layer.style.setProperty('--bg-scale', String(style.scale / 100));
+      layer.style.setProperty('--bg-origin', style.position + '%');
+      layer.style.setProperty('--bg-overlay', String(style.overlay / 100));
+    }
+
     var id = hooks.getBackgroundId();
     if (!id) {
       layer.style.backgroundImage = '';
@@ -194,8 +203,36 @@
     }
   }
 
+  /** 导入打包好的内置照片（photos.zip） */
+  async function importBuiltin() {
+    var bundle = global.LumiPhotoBundle;
+    var button = qs('btnImportBuiltin');
+    var status = qs('albumImportStatus');
+    if (!bundle) { hooks.toast('照片包模块没加载成功'); return; }
+
+    button.disabled = true;
+    status.hidden = false;
+    status.textContent = '准备导入…';
+    try {
+      var result = await bundle.importAll({
+        onProgress: function (done, total, text) {
+          status.textContent = text + (total ? '（' + done + '/' + total + '）' : '');
+        }
+      });
+      await refresh();
+      status.textContent = '已导入 ' + result.added + ' 张内置照片' + (result.skipped ? '，跳过已存在 ' + result.skipped + ' 张' : '');
+      hooks.toast('内置照片已加入相册');
+    } catch (error) {
+      status.textContent = '导入失败：' + (error && error.message ? error.message : error);
+      hooks.toast('导入内置照片失败');
+    } finally {
+      button.disabled = false;
+    }
+  }
+
   function bind() {
     qs('btnPickPhotos').addEventListener('click', function () { qs('albumInput').click(); });
+    qs('btnImportBuiltin').addEventListener('click', importBuiltin);
     qs('albumInput').addEventListener('change', function (event) {
       var files = event.target.files;
       addFiles(files);
@@ -233,6 +270,7 @@
     open: open,
     refresh: refresh,
     applyBackground: applyBackground,
-    addFiles: addFiles
+    addFiles: addFiles,
+    importBuiltin: importBuiltin
   };
 })(typeof globalThis !== 'undefined' ? globalThis : this);

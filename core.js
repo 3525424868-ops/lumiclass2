@@ -253,6 +253,16 @@
     });
   }
 
+  var DEFAULT_BG_STYLE = { blur: 8, brightness: 90, scale: 105, position: 50, overlay: 55 };
+
+  function normalizeBackgroundStyle(style) {
+    var out = {};
+    Object.keys(DEFAULT_BG_STYLE).forEach(function (key) {
+      out[key] = style && typeof style[key] === 'number' && isFinite(style[key]) ? style[key] : DEFAULT_BG_STYLE[key];
+    });
+    return out;
+  }
+
   function defaultSettings() {
     return {
       semesterStartDate: toISODate(mondayOf(new Date())),
@@ -263,7 +273,8 @@
       seedVersion: 0,
       periodTimes: [], // [{ id: 1, start: '08:00', end: '08:45' }]
       classReminder: { enabled: false, minutesBefore: 15 },
-      backgroundPhotoId: null
+      backgroundPhotoId: null,
+      backgroundStyle: normalizeBackgroundStyle(null)
     };
   }
 
@@ -280,6 +291,12 @@
     }
     if (data.settings.backgroundPhotoId === undefined) {
       data.settings.backgroundPhotoId = null;
+      changed = true;
+    }
+    var normalizedStyle = normalizeBackgroundStyle(data.settings.backgroundStyle);
+    if (!data.settings.backgroundStyle ||
+        Object.keys(normalizedStyle).some(function (k) { return data.settings.backgroundStyle[k] !== normalizedStyle[k]; })) {
+      data.settings.backgroundStyle = normalizedStyle;
       changed = true;
     }
 
@@ -521,7 +538,9 @@
     combineDateTime: combineDateTime,
     buildICS: buildICS,
     icsDateTime: icsDateTime,
-    icsEscape: icsEscape
+    icsEscape: icsEscape,
+    DEFAULT_BG_STYLE: DEFAULT_BG_STYLE,
+    normalizeBackgroundStyle: normalizeBackgroundStyle
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

@@ -106,6 +106,7 @@
         <label>开始节次<input id="fStart" type="number" min="1" max="14" step="1"></label>
         <label>连续节数<input id="fCount" type="number" min="1" max="14" step="1"></label>
       </div>
+      <p class="hint">这里只选“第几节”。具体几点上课是全校统一的作息，在底部「设置 → 节次时间」里填一次，所有课程共用。</p>
 
       <div class="form-row">
         <label>开始周<input id="fFrom" type="number" min="1" max="60" step="1"></label>
@@ -169,10 +170,24 @@
         <p class="hint">iPhone 上的网页不能后台定时通知，所以除了 App 内提示，建议在「作业」页导出一次日历，由系统日历准点提醒。</p>
       </fieldset>
 
-      <details class="periods-accordion">
-        <summary>节次时间（上课提醒需要它）</summary>
+      <fieldset class="bg-box">
+        <legend>课表背景</legend>
+        <p class="hint" id="bgStatus">当前：粉色渐变（还没选照片）</p>
+        <label class="range-row">虚化 <input id="bgBlur" type="range" min="0" max="30" step="1"><output id="bgBlurOut">8 px</output></label>
+        <label class="range-row">亮度 <input id="bgBrightness" type="range" min="40" max="120" step="5"><output id="bgBrightnessOut">90%</output></label>
+        <label class="range-row">缩放 <input id="bgScale" type="range" min="100" max="200" step="5"><output id="bgScaleOut">105%</output></label>
+        <label class="range-row">上下位置 <input id="bgPosition" type="range" min="0" max="100" step="5"><output id="bgPositionOut">50%</output></label>
+        <label class="range-row">文字遮罩 <input id="bgOverlay" type="range" min="0" max="90" step="5"><output id="bgOverlayOut">55%</output></label>
+        <div class="sheet-actions">
+          <button class="btn ghost" id="btnClearBg" type="button">恢复粉色背景</button>
+        </div>
+        <p class="hint">在「相册」里点开任意照片 →「设为课表背景」，然后回这里调虚实、大小和位置。</p>
+      </fieldset>
+
+      <details class="periods-accordion" id="periodDetails">
+        <summary>节次时间（点开填写，上课提醒需要）</summary>
         <div id="periodRows" class="period-rows"></div>
-        <p class="hint">按学校正式作息填写 24 小时制，结束时间必须晚于开始时间。</p>
+        <p class="hint">按学校正式作息填写 24 小时制，结束时间必须晚于开始时间。填一次，所有课程共用。</p>
       </details>
 
       <p class="form-error" id="settingsError" hidden></p>
@@ -270,10 +285,12 @@
       <button class="icon-btn close" data-close="album" type="button" aria-label="关闭">✕</button>
     </div>
     <p class="hint" id="albumCount">还没有照片</p>
-    <p class="hint" id="albumEmpty">点「添加照片」从手机相册选图。照片只存在这台设备的浏览器里，不会上传到任何服务器。</p>
+    <p class="hint" id="albumEmpty">点「添加照片」从手机相册选图，或点「导入内置照片」把打包好的照片一次装进来。照片只存在这台设备的浏览器里，不会上传到任何服务器。</p>
+    <p class="hint" id="albumImportStatus" hidden></p>
     <div class="album-grid" id="albumGrid"></div>
     <input id="albumInput" type="file" accept="image/*" multiple hidden>
     <div class="sheet-actions wrap">
+      <button class="btn ghost" id="btnImportBuiltin" type="button">导入内置照片</button>
       <button class="btn primary" id="btnPickPhotos" type="button">添加照片</button>
     </div>
   </div>
@@ -329,6 +346,7 @@
 
 <script src="core.js"></script>
 <script src="store.js"></script>
+<script src="photobundle.js"></script>
 <script src="album.js"></script>
 <script src="reminders.js"></script>
 <script src="app.js"></script>

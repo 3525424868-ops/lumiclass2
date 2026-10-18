@@ -18,10 +18,10 @@
 
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 
-/* 课表背景照片层 */
+/* 课表背景照片层（虚化/亮度/缩放/位置/遮罩都由 CSS 变量控制） */
 .photo-bg {
   position: fixed;
-  inset: 0;
+  inset: -40px;
   z-index: 0;
   background-size: cover;
   background-position: center;
@@ -29,16 +29,53 @@
   opacity: 0;
   transition: opacity 0.3s ease;
   pointer-events: none;
+  filter: blur(var(--bg-blur, 8px)) brightness(var(--bg-bright, 0.9));
+  transform: scale(var(--bg-scale, 1.05));
+  transform-origin: center var(--bg-origin, 50%);
 }
 .photo-bg.active { opacity: 1; }
 .photo-bg.active::after {
   content: "";
   position: absolute;
   inset: 0;
-  background: linear-gradient(180deg, rgba(255, 250, 252, 0.72), rgba(255, 250, 252, 0.62));
+  background: rgba(255, 250, 252, var(--bg-overlay, 0.55));
 }
 body.has-photo-bg { background: #f6e4ec; }
 body.has-photo-bg .bg-decor { display: none; }
+
+/* 背景调节滑块 */
+.bg-box {
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.6);
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+.bg-box legend { font-size: 12px; color: var(--ink-soft); padding: 0 4px; }
+.form label.range-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  font-size: 12px;
+}
+.form label.range-row input[type="range"] {
+  flex: 1;
+  min-width: 0;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  accent-color: var(--pink-strong);
+}
+.form label.range-row output {
+  flex: none;
+  min-width: 46px;
+  text-align: right;
+  font-size: 12px;
+  color: var(--ink-soft);
+}
 
 /* 悬浮添加按钮 */
 .fab {
@@ -610,8 +647,10 @@ body {
 }
 
 .period-rows { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 8px; }
-.period-row {
+/* 注意：.period-row 是 <label>，必须压过 .form label 的 column 方向 */
+.form label.period-row {
   display: flex;
+  flex-direction: row;
   flex-wrap: nowrap;
   align-items: center;
   gap: 6px;

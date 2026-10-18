@@ -479,6 +479,66 @@
     }
   }
 
+  function bgStyle() {
+    var s = settings();
+    s.backgroundStyle = core.normalizeBackgroundStyle(s.backgroundStyle);
+    return s.backgroundStyle;
+  }
+
+  var BG_SLIDERS = [
+    { id: 'bgBlur', key: 'blur', out: 'bgBlurOut', format: function (v) { return v + ' px'; } },
+    { id: 'bgBrightness', key: 'brightness', out: 'bgBrightnessOut', format: function (v) { return v + '%'; } },
+    { id: 'bgScale', key: 'scale', out: 'bgScaleOut', format: function (v) { return v + '%'; } },
+    { id: 'bgPosition', key: 'position', out: 'bgPositionOut', format: function (v) { return v + '%'; } },
+    { id: 'bgOverlay', key: 'overlay', out: 'bgOverlayOut', format: function (v) { return v + '%'; } }
+  ];
+
+  function renderBackgroundControls() {
+    var style = bgStyle();
+    BG_SLIDERS.forEach(function (slider) {
+      var input = qs(slider.id);
+      var output = qs(slider.out);
+      if (!input) return;
+      input.value = String(style[slider.key]);
+      if (output) output.textContent = slider.format(style[slider.key]);
+    });
+    var status = qs('bgStatus');
+    if (status) {
+      status.textContent = settings().backgroundPhotoId
+        ? '当前：使用相册照片作背景（可在下面调节）'
+        : '当前：粉色渐变（在相册里点开照片 →「设为课表背景」）';
+    }
+  }
+
+  function bindBackgroundControls() {
+    BG_SLIDERS.forEach(function (slider) {
+      var input = qs(slider.id);
+      if (!input) return;
+      input.addEventListener('input', function () {
+        var style = bgStyle();
+        style[slider.key] = Number(input.value);
+        var output = qs(slider.out);
+        if (output) output.textContent = slider.format(Number(input.value));
+        if (window.LumiAlbum) window.LumiAlbum.applyBackground();
+      });
+      input.addEventListener('change', function () {
+        bgStyle()[slider.key] = Number(input.value);
+        save();
+      });
+    });
+
+    var clear = qs('btnClearBg');
+    if (clear) {
+      clear.addEventListener('click', function () {
+        settings().backgroundPhotoId = null;
+        save();
+        if (window.LumiAlbum) window.LumiAlbum.applyBackground();
+        renderBackgroundControls();
+        toast('已恢复粉色背景');
+      });
+    }
+  }
+
   function openSettings(onboarding) {
     var s = settings();
     qs('settingsTitle').textContent = onboarding ? '设置你的学期' : '设置';
@@ -491,7 +551,13 @@
     qs('sClassMinutes').value = String(reminder.minutesBefore || 15);
     qs('startError').hidden = true;
     qs('settingsError').hidden = true;
+    renderBackgroundControls();
     buildPeriodRows();
+    // 开了上课提醒却没填作息时，自动展开节次时间，避免“找不到在哪填”
+    var details = qs('periodDetails');
+    if (details) {
+      details.open = !!reminder.enabled && !(s.periodTimes && s.periodTimes.length);
+    }
     openSheet('settings');
   }
 
@@ -537,6 +603,15 @@
     if (invalid) {
       errorBox.textContent = '第 ' + invalid + ' 节的时间无效：请填 HH:mm，且结束时间晚于开始时间。';
       errorBox.hidden = false;
+      return;
+    }
+
+    var reminderOn = qs('sClassRemind').checked;
+    if (reminderOn && !times.length) {
+      errorBox.textContent = '要开启上课提醒，需要先在上面「节次时间」里填至少一节的作息（比如第 1 节 08:00–08:45）。';
+      errorBox.hidden = false;
+      var detailsOpen = qs('periodDetails');
+      if (detailsOpen) detailsOpen.open = true;
       return;
     }
 
@@ -706,6 +781,7 @@
     });
 
     qs('btnExport').addEventListener('click', exportBackup);
+    bindBackgroundControls();
     qs('importFile').addEventListener('change', function (event) {
       var file = event.target.files && event.target.files[0];
       if (file) importBackup(file);
@@ -772,6 +848,7 @@
       window.LumiAlbum.init({
         getBackgroundId: function () { return settings().backgroundPhotoId; },
         setBackgroundId: function (id) { settings().backgroundPhotoId = id; },
+        getBackgroundStyle: bgStyle,
         save: save,
         toast: toast,
         openSheet: openSheet,

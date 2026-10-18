@@ -1,11 +1,12 @@
 /* LumiClass Web —— 离线缓存（改版本号即可让所有客户端更新） */
-var CACHE = 'lumiclass-web-v2';
+var CACHE = 'lumiclass-web-v4';
 var ASSETS = [
   './',
   './index.html',
   './styles.css',
   './core.js',
   './store.js',
+  './photobundle.js',
   './album.js',
   './reminders.js',
   './app.js',
