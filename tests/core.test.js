@@ -412,6 +412,29 @@ test('没有作息时间时，课程自己的时间也能导出日历', () => {
   assert.ok(ics.includes('DTSTART:'), '应有 DTSTART');
 });
 
+/* ---------- 相册排序（喜欢的优先） ---------- */
+
+test('喜欢的照片排在前面，同组按时间从新到旧', () => {
+  const list = [
+    { id: 'a', createdAt: 100, favorite: false },
+    { id: 'b', createdAt: 300, favorite: false },
+    { id: 'c', createdAt: 200, favorite: true },
+    { id: 'd', createdAt: 400, favorite: true }
+  ];
+  assert.deepStrictEqual(core.sortPhotosForDisplay(list).map((p) => p.id), ['d', 'c', 'b', 'a']);
+});
+
+test('排序不会修改传入的数组', () => {
+  const list = [{ id: 'a', createdAt: 1 }, { id: 'b', createdAt: 2, favorite: true }];
+  core.sortPhotosForDisplay(list);
+  assert.deepStrictEqual(list.map((p) => p.id), ['a', 'b']);
+});
+
+test('统计喜欢的数量', () => {
+  assert.strictEqual(core.favoriteCount([{ favorite: true }, {}, { favorite: false }, { favorite: true }]), 2);
+  assert.strictEqual(core.favoriteCount([]), 0);
+});
+
 /* ---------- 汇总 ---------- */
 
 if (failures.length) {

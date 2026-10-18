@@ -97,6 +97,47 @@ body.has-photo-bg .bg-decor { display: none; }
 }
 .fab:active { transform: scale(0.94); }
 
+/* 相册：喜欢 */
+.album-tools {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  margin: 4px 0 8px;
+}
+.chip {
+  font: inherit;
+  font-size: 12px;
+  padding: 6px 12px;
+  border-radius: 999px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--ink-soft);
+  cursor: pointer;
+}
+.chip[aria-pressed="true"] {
+  background: rgba(185, 83, 127, 0.14);
+  border-color: rgba(185, 83, 127, 0.4);
+  color: var(--pink-strong);
+  font-weight: 600;
+}
+.album-cell { position: relative; }
+.album-cell .fav {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  width: 20px;
+  height: 20px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: rgba(0, 0, 0, 0.42);
+  color: #ffd6e4;
+  font-size: 12px;
+  line-height: 1;
+  pointer-events: none;
+}
+#btnPhotoFavorite[data-fav="1"] { color: var(--pink-strong); font-weight: 600; }
+
 /* 首页照片轮播 */
 .carousel {
   margin: 0 2px 8px;
@@ -144,6 +185,17 @@ body.has-photo-bg .bg-decor { display: none; }
   text-align: left;
 }
 .carousel-card:active { transform: scale(0.985); }
+.carousel-card .fav {
+  position: absolute;
+  top: 6px;
+  left: 8px;
+  padding: 1px 7px;
+  border-radius: 999px;
+  background: rgba(0, 0, 0, 0.4);
+  color: #ffd6e4;
+  font-size: 12px;
+  line-height: 18px;
+}
 
 /* 作业 */
 .assign-list { list-style: none; margin: 0 0 6px; padding: 0; display: flex; flex-direction: column; gap: 8px; }

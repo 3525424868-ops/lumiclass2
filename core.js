@@ -394,6 +394,27 @@
       Math.floor(minutes / 60), minutes % 60, 0, 0);
   }
 
+  /* ---------- 相册排序（喜欢的优先） ---------- */
+
+  /**
+   * 相册与首页轮播的显示顺序：
+   *   1) 标了“喜欢”的排在前面
+   *   2) 同组内按 createdAt 从新到旧
+   * 传入的数组不会被修改。
+   */
+  function sortPhotosForDisplay(photos) {
+    return (photos || []).slice().sort(function (a, b) {
+      var favA = a && a.favorite ? 1 : 0;
+      var favB = b && b.favorite ? 1 : 0;
+      if (favA !== favB) return favB - favA;
+      return (b && b.createdAt ? b.createdAt : 0) - (a && a.createdAt ? a.createdAt : 0);
+    });
+  }
+
+  function favoriteCount(photos) {
+    return (photos || []).filter(function (p) { return p && p.favorite; }).length;
+  }
+
   /* ---------- 每门课的具体时间 ---------- */
 
   /**
@@ -610,7 +631,9 @@
     normalizeBackgroundStyle: normalizeBackgroundStyle,
     courseTimeRange: courseTimeRange,
     formatTimeInput: formatTimeInput,
-    normalizeTimeInput: normalizeTimeInput
+    normalizeTimeInput: normalizeTimeInput,
+    sortPhotosForDisplay: sortPhotosForDisplay,
+    favoriteCount: favoriteCount
   };
 
   if (typeof module !== 'undefined' && module.exports) module.exports = api;

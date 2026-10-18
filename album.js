@@ -10,6 +10,7 @@
   var photos = [];
   var urls = new Map();       // id -> { full: url, thumb: url }
   var viewIndex = 0;
+  var onlyFavorites = false;
 
   function qs(id) { return document.getElementById(id); }
 
@@ -39,27 +40,39 @@
 
   function refresh() {
     return store.all().then(function (items) {
-      photos = items;
+      // 喜欢的排前面（相册与首页轮播都用这个顺序）
+      photos = core.sortPhotosForDisplay(items);
       renderGrid();
       applyBackground();
-      if (hooks && hooks.onPhotosChanged) hooks.onPhotosChanged(items);
-      return items.length;
+      if (hooks && hooks.onPhotosChanged) hooks.onPhotosChanged(photos);
+      return photos.length;
     });
+  }
+
+  function visiblePhotos() {
+    return onlyFavorites ? photos.filter(function (p) { return p.favorite; }) : photos;
   }
 
   function renderGrid() {
     var grid = qs('albumGrid');
     grid.textContent = '';
+    var list = visiblePhotos();
     qs('albumEmpty').hidden = photos.length > 0;
     var count = photos.length;
+    var favs = core.favoriteCount(photos);
     var bytes = photos.reduce(function (sum, p) {
       return sum + (p.full ? p.full.size : 0) + (p.thumb ? p.thumb.size : 0);
     }, 0);
     qs('albumCount').textContent = count
       ? count + ' 张照片 · 约 ' + (bytes / 1024 / 1024).toFixed(1) + ' MB'
       : '还没有照片';
+    var favLabel = qs('albumFavCount');
+    if (favLabel) favLabel.textContent = favs ? '已收藏 ' + favs + ' 张，会排在前面、首页轮播优先显示' : '点开照片后按「♡ 喜欢」，喜欢的会排在前面';
+    var onlyBtn = qs('btnOnlyFav');
+    if (onlyBtn) onlyBtn.setAttribute('aria-pressed', onlyFavorites ? 'true' : 'false');
 
-    photos.forEach(function (photo, index) {
+    list.forEach(function (photo) {
+      var index = photos.indexOf(photo);
       var button = el('button', 'album-cell');
       button.type = 'button';
       button.dataset.index = String(index);
@@ -68,8 +81,13 @@
       img.alt = photo.name || ('照片 ' + (index + 1));
       img.loading = 'lazy';
       button.appendChild(img);
+      if (photo.favorite) button.appendChild(el('span', 'fav', '♥'));
       grid.appendChild(button);
     });
+
+    if (!list.length && photos.length) {
+      grid.appendChild(el('p', 'hint', '还没有喜欢的照片，点开任意一张按「♡ 喜欢」。'));
+    }
   }
 
   function open() {
@@ -130,6 +148,31 @@
     var btn = qs('btnPhotoBackground');
     btn.textContent = isBackground ? '取消课表背景' : '设为课表背景';
     btn.dataset.active = isBackground ? '1' : '0';
+
+    var favBtn = qs('btnPhotoFavorite');
+    if (favBtn) {
+      favBtn.textContent = photo.favorite ? '♥ 已喜欢' : '♡ 喜欢';
+      favBtn.dataset.fav = photo.favorite ? '1' : '0';
+    }
+  }
+
+  /** 收藏 / 取消收藏；收藏的会排在相册前面，首页轮播也优先显示 */
+  async function toggleFavorite() {
+    var photo = photos[viewIndex];
+    if (!photo) return;
+    var next = Object.assign({}, photo, { favorite: !photo.favorite });
+    try {
+      await store.put(next);
+    } catch (error) {
+      hooks.toast('保存失败：' + (error && error.message ? error.message : error));
+      return;
+    }
+    await refresh();
+    var index = -1;
+    photos.forEach(function (item, i) { if (item.id === next.id) index = i; });
+    viewIndex = index >= 0 ? index : 0;
+    renderViewer();
+    hooks.toast(next.favorite ? '已喜欢：会排在前面，首页轮播优先显示' : '已取消喜欢');
   }
 
   function step(delta) {
@@ -253,8 +296,13 @@
     });
     qs('photoPrev').addEventListener('click', function () { step(-1); });
     qs('photoNext').addEventListener('click', function () { step(1); });
+    qs('btnPhotoFavorite').addEventListener('click', toggleFavorite);
     qs('btnPhotoBackground').addEventListener('click', toggleBackground);
     qs('btnPhotoDelete').addEventListener('click', removeCurrent);
+    qs('btnOnlyFav').addEventListener('click', function () {
+      onlyFavorites = !onlyFavorites;
+      renderGrid();
+    });
 
     // 手机上左右滑动翻页
     var startX = null;

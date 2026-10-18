@@ -266,6 +266,7 @@
     }
 
     track.textContent = '';
+    var favs = core.favoriteCount(photos);
     photos.forEach(function (photo, index) {
       var card = el('button', 'carousel-card');
       card.type = 'button';
@@ -275,7 +276,10 @@
       img.alt = photo.name || '照片';
       img.loading = 'lazy';
       card.appendChild(img);
-      if (index === 0) card.appendChild(el('span', 'cap', photos.length + ' 个回忆 · 点我看大图'));
+      if (photo.favorite) card.appendChild(el('span', 'fav', '♥'));
+      if (index === 0) {
+        card.appendChild(el('span', 'cap', (favs ? '♥ ' + favs + ' · ' : '') + photos.length + ' 个回忆 · 点我看大图'));
+      }
       track.appendChild(card);
     });
     wrap.hidden = false;

@@ -4,7 +4,7 @@
  *   - 其它静态资源：缓存优先（快、可离线）
  * 改 CACHE 版本号可强制所有客户端换新缓存
  */
-var CACHE = 'lumiclass-web-v9';
+var CACHE = 'lumiclass-web-v10';
 var ASSETS = [
   './',
   './index.html',

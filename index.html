@@ -301,6 +301,10 @@
     </div>
     <p class="hint" id="albumCount">还没有照片</p>
     <p class="hint" id="albumEmpty">点「添加照片」从手机相册选图，或点「导入内置照片」把打包好的照片一次装进来。照片只存在这台设备的浏览器里，不会上传到任何服务器。</p>
+    <div class="album-tools">
+      <button class="chip" id="btnOnlyFav" type="button" aria-pressed="false">♥ 只看喜欢的</button>
+      <span class="hint" id="albumFavCount"></span>
+    </div>
     <p class="hint" id="albumImportStatus" hidden></p>
     <div class="album-grid" id="albumGrid"></div>
     <input id="albumInput" type="file" accept="image/*" multiple hidden>
@@ -325,6 +329,7 @@
       <button class="photo-nav" id="photoNext" type="button" aria-label="下一张">›</button>
     </div>
     <div class="sheet-actions wrap">
+      <button class="btn ghost" id="btnPhotoFavorite" type="button">♡ 喜欢</button>
       <button class="btn ghost" id="btnPhotoDelete" type="button">删除</button>
       <button class="btn primary" id="btnPhotoBackground" type="button">设为课表背景</button>
     </div>
