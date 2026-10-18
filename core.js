@@ -170,7 +170,8 @@
 
   /* ---------- 相恋天数 / 纪念日 ---------- */
 
-  var RELATIONSHIP_START = '2026-11-08';
+  var RELATIONSHIP_START = '2025-11-08';
+  var RELATIONSHIP_START_YEAR = 2025;
 
   function elapsedDays(date) {
     var start = startOfDay(parseISODate(RELATIONSHIP_START));
@@ -184,9 +185,16 @@
 
   function relationshipLabel(date) {
     var days = elapsedDays(date);
-    return days < 0
-      ? '距离我们的故事开始还有 ' + (-days) + ' 天'
-      : '相恋第 ' + (days + 1) + ' 天';
+    if (days < 0) return '距离我们的故事开始还有 ' + (-days) + ' 天';
+    if (days === 0) return '今天，我们的故事开始了';
+    return '我们已经在一起 ' + (days + 1) + ' 天啦';
+  }
+
+  /** 横幅下面那行小字 */
+  function relationshipSubtitle(date) {
+    var days = elapsedDays(date);
+    if (days < 0) return '2025.11.08 · 把喜欢写进每一天';
+    return '从 2025.11.08 起 · 每天都更爱你一点';
   }
 
   function relationshipMilestone(date) {
@@ -195,8 +203,8 @@
     if (days === 0) return '故事从今天开始';
     if (days === 99) return '相恋 100 天快乐';
     var d = startOfDay(date);
-    if (d.getMonth() === 10 && d.getDate() === 8 && d.getFullYear() > 2026) {
-      return '相恋 ' + (d.getFullYear() - 2026) + ' 周年快乐';
+    if (d.getMonth() === 10 && d.getDate() === 8 && d.getFullYear() > RELATIONSHIP_START_YEAR) {
+      return '相恋 ' + (d.getFullYear() - RELATIONSHIP_START_YEAR) + ' 周年快乐';
     }
     return null;
   }
@@ -606,6 +614,7 @@
     validTimeRange: validTimeRange,
     relationshipDayNumber: relationshipDayNumber,
     relationshipLabel: relationshipLabel,
+    relationshipSubtitle: relationshipSubtitle,
     relationshipMilestone: relationshipMilestone,
     seedCourses: seedCourses,
     seedOtherCourses: seedOtherCourses,

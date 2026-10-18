@@ -174,26 +174,33 @@ test('HH:mm 校验：接受合法值，拒绝非法值', () => {
 /* ---------- 纪念日 ---------- */
 
 test('纪念日：起始日算第 1 天，之前显示倒计时', () => {
-  assert.strictEqual(core.relationshipDayNumber(core.parseISODate('2026-11-07')), 0);
-  assert.strictEqual(core.relationshipLabel(core.parseISODate('2026-11-07')), '距离我们的故事开始还有 1 天');
-  assert.strictEqual(core.relationshipMilestone(core.parseISODate('2026-11-07')), null);
-  assert.strictEqual(core.relationshipDayNumber(core.parseISODate('2026-11-08')), 1);
-  assert.strictEqual(core.relationshipDayNumber(core.parseISODate('2026-11-09')), 2);
+  assert.strictEqual(core.relationshipDayNumber(core.parseISODate('2025-11-07')), 0);
+  assert.strictEqual(core.relationshipLabel(core.parseISODate('2025-11-07')), '距离我们的故事开始还有 1 天');
+  assert.strictEqual(core.relationshipMilestone(core.parseISODate('2025-11-07')), null);
+  assert.strictEqual(core.relationshipDayNumber(core.parseISODate('2025-11-08')), 1);
+  assert.strictEqual(core.relationshipDayNumber(core.parseISODate('2025-11-09')), 2);
 });
 
-test('纪念日：第 100 天是 2027-02-15', () => {
-  assert.strictEqual(core.relationshipMilestone(core.parseISODate('2027-02-14')), null);
-  assert.strictEqual(core.relationshipDayNumber(core.parseISODate('2027-02-15')), 100);
-  assert.strictEqual(core.relationshipMilestone(core.parseISODate('2027-02-15')), '相恋 100 天快乐');
-  assert.strictEqual(core.relationshipMilestone(core.parseISODate('2027-02-16')), null);
+test('交往纪念日：2025-11-08 起算，今天是她喜欢的说法', () => {
+  assert.strictEqual(core.relationshipLabel(core.parseISODate('2025-11-08')), '今天，我们的故事开始了');
+  assert.strictEqual(core.relationshipLabel(core.parseISODate('2026-10-18')), '我们已经在一起 345 天啦');
+  assert.strictEqual(core.relationshipSubtitle(core.parseISODate('2026-10-18')), '从 2025.11.08 起 · 每天都更爱你一点');
+  assert.strictEqual(core.relationshipSubtitle(core.parseISODate('2025-10-01')), '2025.11.08 · 把喜欢写进每一天');
+});
+
+test('纪念日：第 100 天是 2026-02-15', () => {
+  assert.strictEqual(core.relationshipMilestone(core.parseISODate('2026-02-14')), null);
+  assert.strictEqual(core.relationshipDayNumber(core.parseISODate('2026-02-15')), 100);
+  assert.strictEqual(core.relationshipMilestone(core.parseISODate('2026-02-15')), '相恋 100 天快乐');
+  assert.strictEqual(core.relationshipMilestone(core.parseISODate('2026-02-16')), null);
 });
 
 test('纪念日：周年按公历日期，闰年不漂移', () => {
-  assert.strictEqual(core.relationshipDayNumber(core.parseISODate('2027-11-08')), 366);
-  assert.strictEqual(core.relationshipMilestone(core.parseISODate('2027-11-08')), '相恋 1 周年快乐');
-  assert.strictEqual(core.relationshipDayNumber(core.parseISODate('2028-11-08')), 732);
-  assert.strictEqual(core.relationshipMilestone(core.parseISODate('2028-11-08')), '相恋 2 周年快乐');
-  assert.strictEqual(core.relationshipMilestone(core.parseISODate('2028-11-07')), null);
+  assert.strictEqual(core.relationshipDayNumber(core.parseISODate('2026-11-08')), 366);
+  assert.strictEqual(core.relationshipMilestone(core.parseISODate('2026-11-08')), '相恋 1 周年快乐');
+  assert.strictEqual(core.relationshipDayNumber(core.parseISODate('2027-11-08')), 731);
+  assert.strictEqual(core.relationshipMilestone(core.parseISODate('2027-11-08')), '相恋 2 周年快乐');
+  assert.strictEqual(core.relationshipMilestone(core.parseISODate('2027-11-07')), null);
 });
 
 /* ---------- 首次导入 / 持久化语义 ---------- */

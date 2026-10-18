@@ -144,7 +144,7 @@
     qs('loveLabel').textContent = core.relationshipLabel(now);
     qs('loveSub').textContent = milestone
       ? milestone + ' · 点开小惊喜'
-      : '2026.11.08 · 把喜欢写进每一天';
+      : core.relationshipSubtitle(now);
 
     var week = activeWeek();
     qs('weekNumber').textContent = week;
@@ -806,7 +806,7 @@
     qs('loveCardDays').textContent = core.relationshipLabel(now);
     qs('loveCardNote').textContent = milestone
       ? '课表会翻到下一周，喜欢你会写进每一天。'
-      : '从 2026 年 11 月 8 日开始，一起收藏平凡日子里的小美好。第 100 天与每个周年当天，再来点点小惊喜吧。';
+      : '从 2025 年 11 月 8 日开始，一起收藏平凡日子里的小美好。第 100 天与每个周年当天，再来点点小惊喜吧。';
     openSheet('love');
   }
 
